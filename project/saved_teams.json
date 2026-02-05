@@ -1,0 +1,158 @@
+{
+  "profiles": {
+    "earthling": {
+      "fleet": [
+        "YEHAT TERMINATOR",
+        "Earthling Cruiser",
+        null,
+        null,
+        null,
+        null,
+        null,
+        "KOHR-AH MARAUDER",
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "team_name": "\u041f\u0440\u0430\u0432\u0435\u0440\u043a\u0430"
+    },
+    "babubu": {
+      "fleet": [
+        "Earthling Cruiser",
+        "KOHR-AH MARAUDER",
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "team_name": "babubu"
+    },
+    "earthling bububu": {
+      "fleet": [
+        "Earthling Cruiser",
+        "Earthling Cruiser",
+        "KOHR-AH MARAUDER",
+        null,
+        null,
+        null,
+        null,
+        "YEHAT TERMINATOR",
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "team_name": "Earthling bububu"
+    },
+    "\u041f\u0440\u0430\u0432\u0435\u0440\u043a\u0430": {
+      "fleet": [
+        "YEHAT TERMINATOR",
+        "Earthling Cruiser",
+        "KOHR-AH MARAUDER",
+        null,
+        "Earthling Cruiser",
+        "Earthling Cruiser",
+        null,
+        "KOHR-AH MARAUDER",
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "team_name": "\u041f\u0440\u0430\u0432\u0435\u0440\u043a\u0430"
+    },
+    "\u043e\u0440\u043f\u043e\u0440\u043f": {
+      "fleet": [
+        "Earthling Cruiser",
+        "KOHR-AH MARAUDER",
+        "YEHAT TERMINATOR",
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "team_name": "\u0435\u0435\u0435\u0435\u0435\u0435\u0435"
+    }
+  },
+  "last_config": {
+    "mode": "Human Control vs Human Control",
+    "teams": {
+      "Team 1": [
+        "YEHAT TERMINATOR",
+        "Earthling Cruiser",
+        null,
+        null,
+        null,
+        null,
+        null,
+        "KOHR-AH MARAUDER",
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "Team 2": [
+        "YEHAT TERMINATOR",
+        "Earthling Cruiser",
+        "KOHR-AH MARAUDER",
+        null,
+        "Earthling Cruiser",
+        "Earthling Cruiser",
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ]
+    },
+    "team_names": {
+      "Team 1": "\u041f\u0440\u0430\u0432\u0435\u0440\u043a\u0430",
+      "Team 2": "\u041f\u0440\u0430\u0432\u0435\u0440\u043a\u0430"
+    },
+    "settings": {
+      "Team 1": {
+        "control": "Human Control",
+        "cyborg_difficulty": "N/A"
+      },
+      "Team 2": {
+        "control": "Human Control",
+        "cyborg_difficulty": "N/A"
+      }
+    },
+    "initial_ships": {
+      "Team 1": "YEHAT TERMINATOR",
+      "Team 2": "YEHAT TERMINATOR"
+    },
+    "initial_slots": {
+      "Team 1": null,
+      "Team 2": null
+    }
+  }
+}
