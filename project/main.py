@@ -1,9 +1,9 @@
 import pygame
 import sys
-from menu import SuperMeleeMenu
-from game import Game
-from project.config import SCREEN_W, SCREEN_H
-from title_screen import TitleScreen  # 2025-12-10: добавлен импорт титульного экрана VOID ENGINE
+from project.menu import SuperMeleeMenu
+from project.game import Game
+from project.config import SCREEN_W, SCREEN_H, APP_VERSION
+from project.title_screen import TitleScreen  # 2025-12-10: добавлен импорт титульного экрана VOID ENGINE
 
 
 def run_title_screen(screen, clock):
@@ -13,7 +13,8 @@ def run_title_screen(screen, clock):
     """
     title_screen = TitleScreen(
         (SCREEN_W, SCREEN_H),
-        "assets/ui/void_engine_title.png"  # путь к постеру титульного экрана
+        "assets/ui/void_engine_title.png",  # путь к постеру титульного экрана
+        build_label=f"Build {APP_VERSION}"
     )
 
     while not title_screen.done:
@@ -33,6 +34,7 @@ def run_title_screen(screen, clock):
 def main():
     pygame.init()
     screen = pygame.display.set_mode((SCREEN_W, SCREEN_H))
+    pygame.display.set_caption(f"Combat Zone - v{APP_VERSION}")
     clock = pygame.time.Clock()
 
     run_title_screen(screen, clock)  # 2025-12-10: показ титульного экрана перед главным меню

@@ -14,7 +14,7 @@ from project.config import SCREEN_W, SCREEN_H, PANEL_WIDTH, GAME_SCREEN_W
 # [2026-02-03] Безопасный импорт renderer (не ломаем запуск, даже если папка view не package).
 # Причина: избежать ModuleNotFoundError / ImportError при разной структуре PYTHONPATH.
 try:
-    from view.melee_menu_renderer import MeleeMenuRenderer
+    from project.view.melee_menu_renderer import MeleeMenuRenderer
 except Exception:
     MeleeMenuRenderer = None
 

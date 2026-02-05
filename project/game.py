@@ -34,7 +34,7 @@ from project.model.collisions import (
     handle_ship_ship_collision,
     handle_asteroid_collision,
 )
-from menu import PauseMenu
+from project.menu import PauseMenu
 from project.view.renderer import *
 from project.entities.effect import HitEffect, DeathEffect  # FIX 2025-08-16: DeathEffect used for death blasts
 from project.view import renderer

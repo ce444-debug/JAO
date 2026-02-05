@@ -1,6 +1,6 @@
 import random
 import pygame
-from config import FIELD_W, FIELD_H, GAME_SCREEN_W, SCREEN_H
+from project.config import FIELD_W, FIELD_H, GAME_SCREEN_W, SCREEN_H
 from project.model.utils import wrap_delta
 
 def generate_colored_stars(count):
