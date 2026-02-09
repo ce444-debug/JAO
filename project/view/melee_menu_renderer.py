@@ -9,7 +9,11 @@
 
 import os
 import pygame
-from project.config import GAME_SCREEN_W
+
+# [2026-02-03] CHANGE: виртуальный экран 320x240 с масштабированием до окна.
+# Причина: требуется масштаб-пайплайн для UQM PNG без смешивания координат.
+VIRTUAL_W = 320
+VIRTUAL_H = 240
 
 
 class MeleeMenuRenderer:
@@ -17,6 +21,9 @@ class MeleeMenuRenderer:
         self.image = None
         self.img_w = 0
         self.img_h = 0
+        # [2026-02-03] CHANGE: отдельный виртуальный экран для UQM-рендера.
+        # Причина: UQM PNG должны рисоваться в 320x240 и масштабироваться целиком.
+        self.virtual_surface = pygame.Surface((VIRTUAL_W, VIRTUAL_H))
         self._load()
 
     def _load(self):
@@ -36,29 +43,16 @@ class MeleeMenuRenderer:
         if not self.image:
             return
 
-        screen_h = menu.screen.get_height()
+        # [2026-02-03] CHANGE: рисуем UQM кадр в виртуальный экран 320x240.
+        # Причина: единый масштаб-пайплайн для дальнейшего апскейла до окна.
+        self.virtual_surface.fill((0, 0, 0))
+        self.virtual_surface.blit(self.image, (0, 0))
 
-        # масштаб по высоте
-        scale = screen_h / self.img_h
-        target_h = screen_h
-        target_w = int(self.img_w * scale)
-
+        screen_w, screen_h = menu.screen.get_size()
         scaled = pygame.transform.smoothscale(
-            self.image, (target_w, target_h)
+            self.virtual_surface, (screen_w, screen_h)
         )
 
-        # центрируем ВНУТРИ GAME_SCREEN_W
-        x = (GAME_SCREEN_W - target_w) // 2
-
-        # ограничиваем область (чтобы не лезло на правую панель)
-        clip_rect = pygame.Rect(0, 0, GAME_SCREEN_W, screen_h)
-        menu.screen.set_clip(clip_rect)
-
-        # ПОЛУПРОЗРАЧНЫЙ фон — СТАБИЛЬНО
-        overlay = scaled.copy()
-        overlay.set_alpha(120)  # ← тут можешь крутить (80–150)
-
-        menu.screen.blit(overlay, (x, 0))
-
-        # вернуть clip
-        menu.screen.set_clip(None)
+        # [2026-02-03] CHANGE: масштабированный кадр на весь экран.
+        # Причина: UQM фон должен занимать 800x600 без смещений.
+        menu.screen.blit(scaled, (0, 0))
