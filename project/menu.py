@@ -149,10 +149,11 @@ class SuperMeleeMenu:
             pygame.display.flip()
             self.clock.tick(30)
 
-    def draw_main_menu(self):
-        self.screen.fill(BLACK)
-        left_rect = pygame.Rect(0, 0, GAME_SCREEN_W, SCREEN_H)
-        pygame.draw.rect(self.screen, (30, 30, 30), left_rect)
+    def draw_main_menu(self, with_background=True):
+        if with_background:
+            self.screen.fill(BLACK)
+            left_rect = pygame.Rect(0, 0, GAME_SCREEN_W, SCREEN_H)
+            pygame.draw.rect(self.screen, (30, 30, 30), left_rect)
         self.screen.blit(self.font_title.render("Super Melee", True, YELLOW), (20, 10))
 
         h_half = (SCREEN_H - 100) // 2 - 10
