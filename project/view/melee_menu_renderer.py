@@ -37,22 +37,22 @@ class MeleeMenuRenderer:
         self.img_w, self.img_h = img.get_size()
 
     def draw_main_menu(self, menu):
+        # [2026-02-03] CHANGE: сначала рендерим UQM-фон, затем legacy меню.
+        # Причина: фон не должен перекрывать интерактивные элементы меню.
+        if self.image:
+            # [2026-02-03] CHANGE: рисуем UQM кадр в виртуальный экран 320x240.
+            # Причина: единый масштаб-пайплайн для дальнейшего апскейла до окна.
+            self.virtual_surface.fill((0, 0, 0))
+            self.virtual_surface.blit(self.image, (0, 0))
+
+            screen_w, screen_h = menu.screen.get_size()
+            scaled = pygame.transform.smoothscale(
+                self.virtual_surface, (screen_w, screen_h)
+            )
+
+            # [2026-02-03] CHANGE: масштабированный кадр на весь экран.
+            # Причина: UQM фон должен занимать 800x600 без смещений.
+            menu.screen.blit(scaled, (0, 0))
+
         # 1) обычный рендер меню (НЕ ТРОГАЕМ)
         menu.draw_main_menu()
-
-        if not self.image:
-            return
-
-        # [2026-02-03] CHANGE: рисуем UQM кадр в виртуальный экран 320x240.
-        # Причина: единый масштаб-пайплайн для дальнейшего апскейла до окна.
-        self.virtual_surface.fill((0, 0, 0))
-        self.virtual_surface.blit(self.image, (0, 0))
-
-        screen_w, screen_h = menu.screen.get_size()
-        scaled = pygame.transform.smoothscale(
-            self.virtual_surface, (screen_w, screen_h)
-        )
-
-        # [2026-02-03] CHANGE: масштабированный кадр на весь экран.
-        # Причина: UQM фон должен занимать 800x600 без смещений.
-        menu.screen.blit(scaled, (0, 0))
