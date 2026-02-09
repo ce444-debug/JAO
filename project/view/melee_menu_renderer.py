@@ -29,6 +29,9 @@ class MeleeMenuRenderer:
         # [2026-02-03] CHANGE: стартовый кадр инициализации.
         # Причина: renderer должен уметь принимать номер кадра.
         self.frame_index = 0
+        # [2026-02-03] CHANGE: шрифт для версии renderer.
+        # Причина: показать видимую метку активности рендера поверх UQM.
+        self.version_font = pygame.font.SysFont("Arial", 20)
         self._load(self.frame_index)
 
     def _load(self, frame_index):
@@ -67,3 +70,9 @@ class MeleeMenuRenderer:
         # [2026-02-03] CHANGE: масштабированный кадр на весь экран 800x600.
         # Причина: UQM фон должен занимать весь экран без смещений.
         menu.screen.blit(scaled, (0, 0))
+
+        # [2026-02-03] CHANGE: версия renderer поверх UQM-фона.
+        # Причина: нужно видеть, что renderer активен, без влияния на логику.
+        version_text = "UQM MENU v0.1 (renderer active)"
+        text_surface = self.version_font.render(version_text, True, (255, 255, 0))
+        menu.screen.blit(text_surface, (12, SCALED_H - text_surface.get_height() - 12))
