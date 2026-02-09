@@ -26,7 +26,7 @@ def fast_blur(surface: pygame.Surface, radius: int = 12) -> pygame.Surface:
 
 
 class TitleScreen:
-    def __init__(self, screen_size: Tuple[int, int], poster_path: str):
+    def __init__(self, screen_size: Tuple[int, int], poster_path: str, build_label: str = ""):
         self.screen_width, self.screen_height = screen_size
 
         # Загрузим оригинальный постер
@@ -45,6 +45,7 @@ class TitleScreen:
         self.blink_period = 1.0
         self.show_press_any_key = True
         self.done = False
+        self.build_label = build_label
 
     def _create_background_fill(self) -> pygame.Surface:
         """
@@ -114,3 +115,8 @@ class TitleScreen:
 
             surface.blit(shadow, shadow_rect)
             surface.blit(txt, txt_rect)
+
+        if self.build_label:
+            build_txt = self.font.render(self.build_label, True, (170, 170, 180))
+            build_rect = build_txt.get_rect(topleft=(20, 16))
+            surface.blit(build_txt, build_rect)
