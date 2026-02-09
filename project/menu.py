@@ -45,6 +45,9 @@ class SuperMeleeMenu:
         # [2026-02-03] Renderer для поэтапного переноса отрисовки.
         # Причина: оставить логику меню в menu.py, а графику постепенно увести в view/.
         self.renderer = MeleeMenuRenderer() if MeleeMenuRenderer is not None else None
+        # [2026-02-03] CHANGE: текущий кадр меню для UQM-отрисовки.
+        # Причина: привязать существующую логику выбора к графическому кадру.
+        self.current_frame = 0
 
         # FSM state
         self.state = "main_menu"
@@ -130,10 +133,16 @@ class SuperMeleeMenu:
         self.reset()
         while True:
             if self.state == "main_menu":
+                # [2026-02-03] CHANGE: выбор кадра UQM для кнопки Battle!.
+                # Причина: при активной кнопке показывать meleemenu-026.png.
+                if self.selected_right == 3:
+                    self.current_frame = 26
+                else:
+                    self.current_frame = 0
                 # [2026-02-03] main_menu теперь рисуется через renderer, если он доступен.
                 # Причина: перенос отрисовки из menu.py в view/ без ломки логики.
                 if self.renderer is not None:
-                    self.renderer.draw_main_menu(self)
+                    self.renderer.draw_main_menu(self, self.current_frame)
                 else:
                     self.draw_main_menu()
                 self.handle_main_events()
