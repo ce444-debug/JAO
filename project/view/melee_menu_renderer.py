@@ -14,6 +14,8 @@ import pygame
 # Причина: требуется масштаб-пайплайн для UQM PNG без смешивания координат.
 VIRTUAL_W = 320
 VIRTUAL_H = 240
+SCALED_W = 800
+SCALED_H = 600
 
 
 class MeleeMenuRenderer:
@@ -24,10 +26,17 @@ class MeleeMenuRenderer:
         # [2026-02-03] CHANGE: отдельный виртуальный экран для UQM-рендера.
         # Причина: UQM PNG должны рисоваться в 320x240 и масштабироваться целиком.
         self.virtual_surface = pygame.Surface((VIRTUAL_W, VIRTUAL_H))
-        self._load()
+        # [2026-02-03] CHANGE: стартовый кадр инициализации.
+        # Причина: renderer должен уметь принимать номер кадра.
+        self.frame_index = 0
+        self._load(self.frame_index)
 
-    def _load(self):
-        path = os.path.join("assets", "ui", "menu", "meleemenu-000.png")
+    def _load(self, frame_index):
+        # [2026-02-03] CHANGE: путь строится по номеру кадра.
+        # Причина: renderer должен рисовать строго заданный кадр.
+        path = os.path.join(
+            "assets", "ui", "menu", f"meleemenu-{frame_index:03d}.png"
+        )
         if not os.path.exists(path):
             print(f"[MeleeMenuRenderer] NOT FOUND: {path}")
             return
@@ -36,12 +45,14 @@ class MeleeMenuRenderer:
         self.image = img
         self.img_w, self.img_h = img.get_size()
 
-    def draw_main_menu(self, menu):
-        # [2026-02-03] CHANGE: при наличии UQM PNG legacy-отрисовка заменяется.
-        # Причина: графика должна полностью заменить старый визуал, сохранив логику.
+    def draw_main_menu(self, menu, frame_index=0):
+        # [2026-02-03] CHANGE: renderer принимает номер кадра и рисует только его.
+        # Причина: логика меню остаётся в menu.py, рендерер только рисует кадр.
+        if frame_index != self.frame_index:
+            self.frame_index = frame_index
+            self._load(self.frame_index)
+
         if not self.image:
-            # 1) обычный рендер меню (НЕ ТРОГАЕМ)
-            menu.draw_main_menu()
             return
 
         # [2026-02-03] CHANGE: рисуем UQM кадр в виртуальный экран 320x240.
@@ -49,11 +60,10 @@ class MeleeMenuRenderer:
         self.virtual_surface.fill((0, 0, 0))
         self.virtual_surface.blit(self.image, (0, 0))
 
-        screen_w, screen_h = menu.screen.get_size()
         scaled = pygame.transform.smoothscale(
-            self.virtual_surface, (screen_w, screen_h)
+            self.virtual_surface, (SCALED_W, SCALED_H)
         )
 
-        # [2026-02-03] CHANGE: масштабированный кадр на весь экран.
-        # Причина: UQM фон должен занимать 800x600 без смещений.
+        # [2026-02-03] CHANGE: масштабированный кадр на весь экран 800x600.
+        # Причина: UQM фон должен занимать весь экран без смещений.
         menu.screen.blit(scaled, (0, 0))
