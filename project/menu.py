@@ -133,8 +133,8 @@ class SuperMeleeMenu:
         self.reset()
         while True:
             if self.state == "main_menu":
-                # [2026-02-03] CHANGE: выбор кадра UQM для кнопки Battle!.
-                # Причина: при активной кнопке показывать meleemenu-026.png.
+                # [2026-02-03] CHANGE: frame switching для Battle без изменения логики выбора.
+                # Причина: при активном Battle показывать кадр 026, иначе базовый 000.
                 if self.selected_right == 3:
                     self.current_frame = 26
                 else:
