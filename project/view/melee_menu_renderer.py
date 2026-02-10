@@ -17,6 +17,16 @@ VIRTUAL_H = 240
 SCALED_W = 800
 SCALED_H = 600
 
+# [2026-02-03] CHANGE: якоря зон UQM в виртуальных координатах 320x240.
+# Причина: визуальная проекция активных элементов menu.py в renderer.
+UQM_ANCHORS = {
+    "BATTLE": pygame.Rect(248, 112, 64, 48),
+}
+
+# [2026-02-03] CHANGE: индекс кнопки Battle в существующем правом списке.
+# Причина: подсветка должна включаться только при активном Battle.
+BATTLE_RIGHT_INDEX = 3
+
 
 class MeleeMenuRenderer:
     def __init__(self):
@@ -62,6 +72,15 @@ class MeleeMenuRenderer:
         # Причина: единый масштаб-пайплайн для дальнейшего апскейла до окна.
         self.virtual_surface.fill((0, 0, 0))
         self.virtual_surface.blit(self.image, (0, 0))
+
+        # [2026-02-03] CHANGE: визуальная подсветка зоны Battle по якорю UQM.
+        # Причина: активная кнопка Battle должна подсвечиваться в графике UQM.
+        if getattr(menu, "selected_right", -1) == BATTLE_RIGHT_INDEX:
+            battle_rect = UQM_ANCHORS["BATTLE"]
+            battle_overlay = pygame.Surface((battle_rect.width, battle_rect.height), pygame.SRCALPHA)
+            battle_overlay.fill((255, 255, 0, 70))
+            self.virtual_surface.blit(battle_overlay, battle_rect.topleft)
+            pygame.draw.rect(self.virtual_surface, (255, 255, 0), battle_rect, 2)
 
         scaled = pygame.transform.smoothscale(
             self.virtual_surface, (SCALED_W, SCALED_H)
