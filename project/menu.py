@@ -169,9 +169,9 @@ class SuperMeleeMenu:
                 # [2026-02-03] main_menu теперь рисуется через renderer, если он доступен.
                 # Причина: перенос отрисовки из menu.py в view/ без ломки логики.
                 if self.renderer is not None:
-                    # [2026-02-03] CHANGE: main menu рисуется только через UQM renderer.
-                    # Причина: убрать legacy draw и использовать UQM PNG кадры.
-                    self.renderer.draw_background(self.screen, self.current_frame)
+                    # [2026-02-03] CHANGE: main menu рисуется только через sprite-based UQM renderer.
+                    # Причина: визуал вынесен в renderer без изменения логики меню.
+                    self.renderer.draw_main_menu(self)
                 else:
                     self.draw_main_menu()
                 self.handle_main_events()
