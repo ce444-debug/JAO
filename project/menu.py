@@ -29,6 +29,19 @@ SAVES_FILE = "saved_teams.json"
 CONTROL_OPTIONS = ["Human Control", "Weak Cyborg", "Good Cyborg", "Awesome Cyborg"]
 LEFT_PANEL_COLS = 7
 
+# [2026-02-03] CHANGE: табличное соответствие логического состояния и UQM-кадра.
+# Причина: кадры UQM выбираются по смыслу активного пункта, а не по индексу/счётчику.
+FRAME_MAP = {
+    ("right", "none"): 0,
+    ("right", "battle"): 26,
+    ("right", "save_top"): 23,
+    ("right", "load_top"): 24,
+    ("right", "save_bottom"): 19,
+    ("right", "load_bottom"): 20,
+    ("right", "control_top"): 5,
+    ("right", "control_bottom"): 13,
+}
+
 # In-memory cache for last menu state
 _CACHED_CONFIG = None
 
@@ -133,12 +146,26 @@ class SuperMeleeMenu:
         self.reset()
         while True:
             if self.state == "main_menu":
-                # [2026-02-03] CHANGE: frame switching для Battle без изменения логики выбора.
-                # Причина: при активном Battle показывать кадр 026, иначе базовый 000.
-                if self.selected_right == 3:
-                    self.current_frame = 26
-                else:
-                    self.current_frame = 0
+                # [2026-02-03] CHANGE: выбор кадра только через таблицу соответствий FRAME_MAP.
+                # Причина: кадр UQM определяется смыслом активного пункта, не индексом.
+                frame_state = ("right", "none")
+                if self.selected_right >= 0:
+                    _opt_text, action, team = self.right_options[self.selected_right]
+                    if action == "battle":
+                        frame_state = ("right", "battle")
+                    elif action == "save" and team == "Team 1":
+                        frame_state = ("right", "save_top")
+                    elif action == "load" and team == "Team 1":
+                        frame_state = ("right", "load_top")
+                    elif action == "save" and team == "Team 2":
+                        frame_state = ("right", "save_bottom")
+                    elif action == "load" and team == "Team 2":
+                        frame_state = ("right", "load_bottom")
+                    elif action == "control" and team == "Team 1":
+                        frame_state = ("right", "control_top")
+                    elif action == "control" and team == "Team 2":
+                        frame_state = ("right", "control_bottom")
+                self.current_frame = FRAME_MAP.get(frame_state, 0)
                 # [2026-02-03] main_menu теперь рисуется через renderer, если он доступен.
                 # Причина: перенос отрисовки из menu.py в view/ без ломки логики.
                 if self.renderer is not None:
