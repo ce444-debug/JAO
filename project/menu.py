@@ -169,7 +169,9 @@ class SuperMeleeMenu:
                 # [2026-02-03] main_menu теперь рисуется через renderer, если он доступен.
                 # Причина: перенос отрисовки из menu.py в view/ без ломки логики.
                 if self.renderer is not None:
-                    self.renderer.draw_main_menu(self, self.current_frame)
+                    # [2026-02-03] CHANGE: main menu рисуется только через UQM renderer.
+                    # Причина: убрать legacy draw и использовать UQM PNG кадры.
+                    self.renderer.draw_background(self.screen, self.current_frame)
                 else:
                     self.draw_main_menu()
                 self.handle_main_events()
@@ -186,22 +188,9 @@ class SuperMeleeMenu:
             self.clock.tick(30)
 
     def draw_main_menu(self):
-        self.screen.fill(BLACK)
-        left_rect = pygame.Rect(0, 0, GAME_SCREEN_W, SCREEN_H)
-        pygame.draw.rect(self.screen, (30, 30, 30), left_rect)
-        self.screen.blit(self.font_title.render("Super Melee", True, YELLOW), (20, 10))
-
-        h_half = (SCREEN_H - 100) // 2 - 10
-        panel1 = pygame.Rect(10, 80, GAME_SCREEN_W - 20, h_half)
-        panel2 = pygame.Rect(10, panel1.bottom + 20, GAME_SCREEN_W - 20, h_half)
-        pygame.draw.rect(self.screen, (50, 50, 50), panel1, 2)
-        pygame.draw.rect(self.screen, (50, 50, 50), panel2, 2)
-        self.draw_team_panel("Team 1", panel1)
-        self.draw_team_panel("Team 2", panel2)
-
-        right_rect = pygame.Rect(GAME_SCREEN_W, 0, PANEL_WIDTH, SCREEN_H)
-        pygame.draw.rect(self.screen, (40, 40, 40), right_rect)
-        self.draw_right_panel(right_rect)
+        # [2026-02-03] CHANGE: legacy main menu draw отключён.
+        # Причина: основной экран меню полностью рисуется через UQM renderer.
+        pass
 
     def draw_team_panel(self, team, area):
         name = self.team_names[team]
