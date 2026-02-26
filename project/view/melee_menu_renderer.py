@@ -1,13 +1,10 @@
 # view/melee_menu_renderer.py
-# [2026-02-03] reason: sprite-based control rendering via UQM frames 000..008 on virtual 320x240 surface.
+# [2026-02-03] reason: sprite-based control rendering via UQM frames 000..008 directly on menu.screen.
 
 import os
 import pygame
+from project.config import SCREEN_W, SCREEN_H
 
-
-# [2026-02-03] reason: fixed virtual/real pipeline for UQM menu assets.
-VIRTUAL_SIZE = (320, 240)
-REAL_SIZE = (800, 600)
 
 # [2026-02-03] reason: control option order must match menu logic values.
 CONTROL_OPTIONS = [
@@ -20,9 +17,6 @@ CONTROL_OPTIONS = [
 
 class MeleeMenuRenderer:
     def __init__(self):
-        # [2026-02-03] reason: all rendering is done on virtual surface before scaling to real size.
-        self.offscreen_surface = pygame.Surface(VIRTUAL_SIZE)
-
         # [2026-02-03] reason: load UQM control sprites 000..008 into dictionary for direct frame access.
         self.ui_sprites = {}
         for frame in range(0, 9):
@@ -35,44 +29,42 @@ class MeleeMenuRenderer:
         # [2026-02-03] reason: safe loading with transparent fallback avoids runtime break when asset is missing.
         path = self._frame_path(frame_index)
         if os.path.exists(path):
-            return pygame.image.load(path).convert()
-        fallback = pygame.Surface(VIRTUAL_SIZE, pygame.SRCALPHA)
+            return pygame.image.load(path).convert_alpha()
+        fallback = pygame.Surface((1, 1), pygame.SRCALPHA)
         fallback.fill((0, 0, 0, 0))
         return fallback
 
     def draw_background(self, screen, frame_index):
         # [2026-02-03] reason: compatibility API keeps external calls stable.
-        self.draw_main_menu(type("MenuProxy", (), {
-            "screen": screen,
-            "selected_right": -1,
-            "settings": {
-                "Team 1": {"control": "Human Control"},
-                "Team 2": {"control": "Human Control"},
-            },
-        })())
+        bg = self.ui_sprites[0]
+        bg_scaled = pygame.transform.scale(bg, (SCREEN_W, SCREEN_H))
+        screen.blit(bg_scaled, (0, 0))
 
     def draw_main_menu(self, menu):
-        # [2026-02-03] reason: render background + control sprites using menu state without changing logic.
-        self.offscreen_surface.fill((0, 0, 0))
+        # [2026-02-03] reason: render directly to menu.screen using full-screen background scaling.
+        screen = menu.screen
 
-        # background sprite 000
-        self.offscreen_surface.blit(self.ui_sprites[0], (0, 0))
+        bg = self.ui_sprites[0]
+        bg_scaled = pygame.transform.scale(bg, (SCREEN_W, SCREEN_H))
+        screen.blit(bg_scaled, (0, 0))
 
-        # Team 1 control sprite at (224, 48)
+        # [2026-02-03] reason: compute control anchor positions proportionally to screen size.
+        right_panel_x = int(SCREEN_W * 0.7)
+        team1_y = int(SCREEN_H * 0.25)
+        team2_y = int(SCREEN_H * 0.65)
+
+        # Team 1 control sprite
         team1_idx = CONTROL_OPTIONS.index(menu.settings["Team 1"]["control"])
         if menu.selected_right == 0:
             team1_sprite = 1 + team1_idx
         else:
             team1_sprite = 5 + team1_idx
-        self.offscreen_surface.blit(self.ui_sprites[team1_sprite], (224, 48))
+        screen.blit(self.ui_sprites[team1_sprite], (right_panel_x, team1_y))
 
-        # Team 2 control sprite at (224, 168)
+        # Team 2 control sprite
         team2_idx = CONTROL_OPTIONS.index(menu.settings["Team 2"]["control"])
         if menu.selected_right == 6:
             team2_sprite = 1 + team2_idx
         else:
             team2_sprite = 5 + team2_idx
-        self.offscreen_surface.blit(self.ui_sprites[team2_sprite], (224, 168))
-
-        scaled_surface = pygame.transform.scale(self.offscreen_surface, REAL_SIZE)
-        menu.screen.blit(scaled_surface, (0, 0))
+        screen.blit(self.ui_sprites[team2_sprite], (right_panel_x, team2_y))
