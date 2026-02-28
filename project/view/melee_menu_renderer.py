@@ -69,6 +69,7 @@ class MeleeMenuRenderer:
         else:
             team1_sprite = 5 + team1_idx
         # [2026-02-03] reason: control sprite must scale with background scale factors.
+        # [2026-02-03] reason: anchor is slot center, so scaled sprite is centered on anchor.
         team1_img = self.ui_sprites[team1_sprite]
         team1_scaled = pygame.transform.scale(
             team1_img,
@@ -77,7 +78,13 @@ class MeleeMenuRenderer:
                 int(team1_img.get_height() * scale_y),
             ),
         )
-        screen.blit(team1_scaled, (team1_x, team1_y))
+        screen.blit(
+            team1_scaled,
+            (
+                team1_x - team1_scaled.get_width() // 2,
+                team1_y - team1_scaled.get_height() // 2,
+            ),
+        )
 
         # Team 2 control sprite
         team2_idx = CONTROL_OPTIONS.index(menu.settings["Team 2"]["control"])
@@ -86,6 +93,7 @@ class MeleeMenuRenderer:
         else:
             team2_sprite = 5 + team2_idx
         # [2026-02-03] reason: control sprite must scale with background scale factors.
+        # [2026-02-03] reason: anchor is slot center, so scaled sprite is centered on anchor.
         team2_img = self.ui_sprites[team2_sprite]
         team2_scaled = pygame.transform.scale(
             team2_img,
@@ -94,4 +102,10 @@ class MeleeMenuRenderer:
                 int(team2_img.get_height() * scale_y),
             ),
         )
-        screen.blit(team2_scaled, (team2_x, team2_y))
+        screen.blit(
+            team2_scaled,
+            (
+                team2_x - team2_scaled.get_width() // 2,
+                team2_y - team2_scaled.get_height() // 2,
+            ),
+        )
