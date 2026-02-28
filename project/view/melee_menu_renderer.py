@@ -1,10 +1,16 @@
 # view/melee_menu_renderer.py
-# [2026-02-03] reason: sprite-based control rendering via UQM frames 000..008 directly on menu.screen.
+# [2026-02-03] reason: sprite-based control rendering with anchor-based scaling from 320x240 layout.
 
 import os
 import pygame
 from project.config import SCREEN_W, SCREEN_H
 
+
+# [2026-02-03] reason: base UQM menu resolution for anchor conversion.
+BASE_W = 320
+BASE_H = 240
+TEAM1_POS = (224, 48)
+TEAM2_POS = (224, 168)
 
 # [2026-02-03] reason: control option order must match menu logic values.
 CONTROL_OPTIONS = [
@@ -41,17 +47,20 @@ class MeleeMenuRenderer:
         screen.blit(bg_scaled, (0, 0))
 
     def draw_main_menu(self, menu):
-        # [2026-02-03] reason: render directly to menu.screen using full-screen background scaling.
+        # [2026-02-03] reason: render background full-screen and place controls by scaled 320x240 anchors.
         screen = menu.screen
 
         bg = self.ui_sprites[0]
         bg_scaled = pygame.transform.scale(bg, (SCREEN_W, SCREEN_H))
         screen.blit(bg_scaled, (0, 0))
 
-        # [2026-02-03] reason: compute control anchor positions proportionally to screen size.
-        right_panel_x = int(SCREEN_W * 0.7)
-        team1_y = int(SCREEN_H * 0.25)
-        team2_y = int(SCREEN_H * 0.65)
+        scale_x = SCREEN_W / BASE_W
+        scale_y = SCREEN_H / BASE_H
+
+        team1_x = int(TEAM1_POS[0] * scale_x)
+        team1_y = int(TEAM1_POS[1] * scale_y)
+        team2_x = int(TEAM2_POS[0] * scale_x)
+        team2_y = int(TEAM2_POS[1] * scale_y)
 
         # Team 1 control sprite
         team1_idx = CONTROL_OPTIONS.index(menu.settings["Team 1"]["control"])
@@ -59,7 +68,7 @@ class MeleeMenuRenderer:
             team1_sprite = 1 + team1_idx
         else:
             team1_sprite = 5 + team1_idx
-        screen.blit(self.ui_sprites[team1_sprite], (right_panel_x, team1_y))
+        screen.blit(self.ui_sprites[team1_sprite], (team1_x, team1_y))
 
         # Team 2 control sprite
         team2_idx = CONTROL_OPTIONS.index(menu.settings["Team 2"]["control"])
@@ -67,4 +76,4 @@ class MeleeMenuRenderer:
             team2_sprite = 1 + team2_idx
         else:
             team2_sprite = 5 + team2_idx
-        screen.blit(self.ui_sprites[team2_sprite], (right_panel_x, team2_y))
+        screen.blit(self.ui_sprites[team2_sprite], (team2_x, team2_y))
