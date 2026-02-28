@@ -6,6 +6,8 @@ import pygame
 from project.config import SCREEN_W, SCREEN_H
 
 
+DEBUG_GRID = True
+
 # [2026-02-03] reason: base UQM menu resolution for anchor conversion.
 BASE_W = 320
 BASE_H = 240
@@ -56,6 +58,27 @@ class MeleeMenuRenderer:
 
         scale_x = SCREEN_W / BASE_W
         scale_y = SCREEN_H / BASE_H
+
+        if DEBUG_GRID:
+            # [2026-02-03] reason: debug overlay for 320x240 grid and control anchors.
+            cell_w = SCREEN_W / BASE_W
+            cell_h = SCREEN_H / BASE_H
+
+            for x in range(0, BASE_W, 10):
+                px = int(x * cell_w)
+                pygame.draw.line(screen, (40, 40, 40), (px, 0), (px, SCREEN_H))
+
+            for y in range(0, BASE_H, 10):
+                py = int(y * cell_h)
+                pygame.draw.line(screen, (40, 40, 40), (0, py), (SCREEN_W, py))
+
+            t1x = int(TEAM1_POS[0] * scale_x)
+            t1y = int(TEAM1_POS[1] * scale_y)
+            pygame.draw.circle(screen, (255, 0, 0), (t1x, t1y), 6)
+
+            t2x = int(TEAM2_POS[0] * scale_x)
+            t2y = int(TEAM2_POS[1] * scale_y)
+            pygame.draw.circle(screen, (0, 255, 0), (t2x, t2y), 6)
 
         team1_x = int(TEAM1_POS[0] * scale_x)
         team1_y = int(TEAM1_POS[1] * scale_y)
