@@ -7,13 +7,13 @@ from project.config import SCREEN_W, SCREEN_H
 
 
 DEBUG_GRID = True
-AUTO_ANCHOR_MODE = True
+AUTO_ANCHOR_MODE = False
 
 # [2026-02-03] reason: base UQM menu resolution for anchor conversion.
 BASE_W = 320
 BASE_H = 240
-TEAM1_POS = (252, 54)
-TEAM2_POS = (252, 174)
+TEAM1_POS = (289, 39)
+TEAM2_POS = (289, 182)
 
 # [2026-02-03] reason: control option order must match menu logic values.
 CONTROL_OPTIONS = [
