@@ -9,8 +9,8 @@ from project.config import SCREEN_W, SCREEN_H
 # [2026-02-03] reason: base UQM menu resolution for anchor conversion.
 BASE_W = 320
 BASE_H = 240
-TEAM1_POS = (224, 48)
-TEAM2_POS = (224, 168)
+TEAM1_POS = (252, 54)
+TEAM2_POS = (252, 174)
 
 # [2026-02-03] reason: control option order must match menu logic values.
 CONTROL_OPTIONS = [
