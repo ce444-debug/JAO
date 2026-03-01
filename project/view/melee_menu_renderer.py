@@ -7,7 +7,7 @@ from project.config import SCREEN_W, SCREEN_H
 
 
 DEBUG_GRID = True
-AUTO_ANCHOR_MODE = False
+AUTO_ANCHOR_MODE = True
 
 # [2026-02-03] reason: base UQM menu resolution for anchor conversion.
 BASE_W = 320
@@ -36,10 +36,16 @@ class MeleeMenuRenderer:
         self.ui_sprites = {}
         for frame in [0, 1, 2, 3, 4, 5, 6, 7, 8, 17, 18, 19, 20, 25, 26]:
             self.ui_sprites[frame] = self._load_frame(frame)
-        # [2026-02-03] reason: diagnostic click-capture flow for automatic anchor picking.
-        self._anchor_step = 0  # 0 = waiting Team1, 1 = waiting Team2, 2 = done
-        self._team1_temp = TEAM1_POS
-        self._team2_temp = TEAM2_POS
+        # [2026-02-03] reason: diagnostic click-capture flow for automatic button anchor picking.
+        self._anchor_targets = [
+            "SAVE_T1",
+            "LOAD_T1",
+            "SAVE_T2",
+            "LOAD_T2",
+            "BATTLE"
+        ]
+        self._captured = {}
+        self._anchor_step = 0
 
     def _frame_path(self, frame_index):
         return os.path.join("assets", "ui", "menu", f"meleemenu-{frame_index:03d}.png")
@@ -71,38 +77,34 @@ class MeleeMenuRenderer:
         scale_y = SCREEN_H / BASE_H
 
         if AUTO_ANCHOR_MODE:
-            # [2026-02-03] reason: capture anchor centers from mouse clicks in runtime.
+            # [2026-02-03] reason: capture Save/Load/Battle anchor centers from mouse clicks in runtime.
             for event in pygame.event.get():
                 if event.type == pygame.MOUSEBUTTONDOWN:
                     mx, my = event.pos
                     base_x = int(mx / scale_x)
                     base_y = int(my / scale_y)
 
-                    if self._anchor_step == 0:
-                        print(f"TEAM1_POS = ({base_x}, {base_y})")
-                        self._team1_temp = (base_x, base_y)
-                        self._anchor_step = 1
+                    key = self._anchor_targets[self._anchor_step]
+                    self._captured[key] = (base_x, base_y)
+                    print(f"{key} = ({base_x}, {base_y})")
 
-                    elif self._anchor_step == 1:
-                        print(f"TEAM2_POS = ({base_x}, {base_y})")
-                        self._team2_temp = (base_x, base_y)
-                        self._anchor_step = 2
+                    self._anchor_step += 1
 
-                        with open("melee_anchor_result.txt", "w") as f:
-                            f.write(f"TEAM1_POS = {self._team1_temp}\n")
-                            f.write(f"TEAM2_POS = {self._team2_temp}\n")
-
-                        print("Anchors saved to melee_anchor_result.txt")
+                    if self._anchor_step >= len(self._anchor_targets):
+                        with open("melee_anchor_buttons.txt", "w") as f:
+                            for k, v in self._captured.items():
+                                f.write(f"{k}_POS = {v}\n")
+                        print("All anchors saved to melee_anchor_buttons.txt")
+                        self._anchor_step = len(self._anchor_targets) - 1
 
             font = pygame.font.SysFont(None, 22)
-            if self._anchor_step == 0:
-                txt = "Click center of TEAM 1 control slot"
-            elif self._anchor_step == 1:
-                txt = "Click center of TEAM 2 control slot"
-            else:
-                txt = "Anchors captured. Disable AUTO_ANCHOR_MODE."
 
-            screen.blit(font.render(txt, True, (255, 255, 0)), (20, 20))
+            if self._anchor_step < len(self._anchor_targets):
+                msg = f"Click center of {self._anchor_targets[self._anchor_step]}"
+            else:
+                msg = "All anchors captured. Disable AUTO_ANCHOR_MODE."
+
+            screen.blit(font.render(msg, True, (255,255,0)), (20, 20))
 
         if DEBUG_GRID:
             # [2026-02-03] reason: debug overlay for 320x240 grid and control anchors.
