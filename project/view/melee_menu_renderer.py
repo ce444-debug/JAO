@@ -7,7 +7,7 @@ from project.config import SCREEN_W, SCREEN_H
 
 
 DEBUG_GRID = True
-AUTO_ANCHOR_MODE = True
+AUTO_ANCHOR_MODE = False
 
 # [2026-02-03] reason: base UQM menu resolution for anchor conversion.
 BASE_W = 320
@@ -15,11 +15,11 @@ BASE_H = 240
 TEAM1_POS = (289, 39)
 TEAM2_POS = (289, 182)
 # [2026-02-03] reason: anchors for Save/Load/Battle button sprites in 320x240 layout space.
-SAVE_T1_POS = (110, 205)
-LOAD_T1_POS = (110, 225)
-SAVE_T2_POS = (200, 205)
-LOAD_T2_POS = (200, 225)
-BATTLE_POS = (260, 210)
+SAVE_T1_POS = (286, 61)
+LOAD_T1_POS = (288, 71)
+SAVE_T2_POS = (288, 159)
+LOAD_T2_POS = (288, 149)
+BATTLE_POS = (288, 110)
 
 # [2026-02-03] reason: control option order must match menu logic values.
 CONTROL_OPTIONS = [
