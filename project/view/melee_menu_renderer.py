@@ -35,6 +35,13 @@ CONTROL_OPTIONS = [
     "Awesome Cyborg",
 ]
 
+# [2026-03-16] Причина: соответствие игровых названий кораблей и доступных иконок меню.
+SHIP_ICON_FILES = {
+    "EARTHLING CRUISER": os.path.join("assets", "ui", "icons", "melee", "cruiser-icons-001.png"),
+    "KOHR-AH MARAUDER": os.path.join("assets", "ui", "icons", "melee", "marauder-icons-001.png"),
+    "YEHAT TERMINATOR": os.path.join("assets", "ui", "icons", "melee", "terminator-icons-001.png"),
+}
+
 
 class MeleeMenuRenderer:
     def __init__(self):
@@ -54,6 +61,10 @@ class MeleeMenuRenderer:
         self._anchor_step = 0
         # [2026-03-16] Причина: компактный шрифт для placeholder-иконок кораблей внутри занятых слотов.
         self._slot_font = pygame.font.SysFont("Arial", 10)
+        # [2026-03-16] Причина: кэш загруженных оригинальных иконок кораблей для исключения загрузки в горячем цикле.
+        self._ship_icon_cache = {}
+        # [2026-03-16] Причина: кэш масштабированных иконок под размеры ячеек.
+        self._ship_icon_scaled_cache = {}
 
     def _frame_path(self, frame_index):
         return os.path.join("assets", "ui", "menu", f"meleemenu-{frame_index:03d}.png")
@@ -96,11 +107,78 @@ class MeleeMenuRenderer:
         pygame.draw.rect(screen, fill_color, rect)
         pygame.draw.rect(screen, border_color, rect, max(1, rect.width // 14))
 
-    # [2026-03-16] Причина: безопасный fallback для визуализации занятого слота, когда нет явной иконки корабля.
+    # [2026-03-16] Причина: безопасная нормализация имени корабля для маппинга иконок.
+    def _normalize_ship_key(self, ship_name):
+        if not ship_name:
+            return ""
+        return str(ship_name).strip().upper()
+
+    # [2026-03-16] Причина: получение оригинальной иконки корабля из ассетов с кэшированием.
+    def _get_ship_icon_surface(self, ship_name):
+        key = self._normalize_ship_key(ship_name)
+        if not key:
+            return None
+
+        if key in self._ship_icon_cache:
+            return self._ship_icon_cache[key]
+
+        icon_path = SHIP_ICON_FILES.get(key)
+        if icon_path and os.path.exists(icon_path):
+            try:
+                icon = pygame.image.load(icon_path).convert_alpha()
+            except Exception:
+                icon = None
+        else:
+            icon = None
+
+        self._ship_icon_cache[key] = icon
+        return icon
+
+    # [2026-03-16] Причина: масштабирование иконки корабля под слот с кэшированием результата.
+    def _get_scaled_ship_icon(self, ship_name, target_w, target_h):
+        key = self._normalize_ship_key(ship_name)
+        if not key:
+            return None
+
+        cache_key = (key, target_w, target_h)
+        if cache_key in self._ship_icon_scaled_cache:
+            return self._ship_icon_scaled_cache[cache_key]
+
+        source = self._get_ship_icon_surface(ship_name)
+        if source is None:
+            self._ship_icon_scaled_cache[cache_key] = None
+            return None
+
+        src_w, src_h = source.get_size()
+        if src_w <= 0 or src_h <= 0:
+            self._ship_icon_scaled_cache[cache_key] = None
+            return None
+
+        scale = min(target_w / src_w, target_h / src_h)
+        scaled_w = max(1, int(src_w * scale))
+        scaled_h = max(1, int(src_h * scale))
+        scaled = pygame.transform.smoothscale(source, (scaled_w, scaled_h))
+        self._ship_icon_scaled_cache[cache_key] = scaled
+        return scaled
+
+    # [2026-03-16] Причина: рисование иконки корабля в пределах слота с приоритетом реальных ассетов.
     def _draw_ship_icon_in_slot(self, screen, ship_name, rect):
         if not ship_name:
             return
 
+        inset_x = max(2, rect.width // 10)
+        inset_y = max(2, rect.height // 10)
+        target_w = max(4, rect.width - inset_x * 2)
+        target_h = max(4, rect.height - inset_y * 2)
+        ship_icon = self._get_scaled_ship_icon(ship_name, target_w, target_h)
+
+        if ship_icon is not None:
+            icon_x = rect.centerx - ship_icon.get_width() // 2
+            icon_y = rect.centery - ship_icon.get_height() // 2
+            screen.blit(ship_icon, (icon_x, icon_y))
+            return
+
+        # [2026-03-16] Причина: fallback для неизвестного корабля при отсутствии ассета.
         icon_w = max(4, rect.width // 2)
         icon_h = max(4, rect.height // 2)
         icon_rect = pygame.Rect(
@@ -112,7 +190,7 @@ class MeleeMenuRenderer:
         pygame.draw.rect(screen, (210, 235, 255), icon_rect)
         pygame.draw.rect(screen, (8, 30, 80), icon_rect, 1)
 
-        short = ship_name[:2].upper()
+        short = str(ship_name)[:2].upper()
         txt = self._slot_font.render(short, True, (8, 30, 80))
         txt_pos = (
             icon_rect.centerx - txt.get_width() // 2,
