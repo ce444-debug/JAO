@@ -21,6 +21,12 @@ SAVE_T2_POS = (288, 159)
 LOAD_T2_POS = (288, 149)
 BATTLE_POS = (288, 110)
 
+# [2026-03-16] Причина: базовая геометрия двух сеток флота (320x240) для procedural-отрисовки слотов.
+TEAM1_GRID_RECT = pygame.Rect(8, 58, 206, 82)
+TEAM2_GRID_RECT = pygame.Rect(8, 151, 206, 82)
+GRID_COLS = 7
+GRID_ROWS = 2
+
 # [2026-02-03] reason: control option order must match menu logic values.
 CONTROL_OPTIONS = [
     "Human Control",
@@ -46,6 +52,8 @@ class MeleeMenuRenderer:
         ]
         self._captured = {}
         self._anchor_step = 0
+        # [2026-03-16] Причина: компактный шрифт для placeholder-иконок кораблей внутри занятых слотов.
+        self._slot_font = pygame.font.SysFont("Arial", 10)
 
     def _frame_path(self, frame_index):
         return os.path.join("assets", "ui", "menu", f"meleemenu-{frame_index:03d}.png")
@@ -58,6 +66,91 @@ class MeleeMenuRenderer:
         fallback = pygame.Surface((1, 1), pygame.SRCALPHA)
         fallback.fill((0, 0, 0, 0))
         return fallback
+
+    # [2026-03-16] Причина: единая конвертация Rect из 320x240 в текущее экранное разрешение.
+    def _scale_rect(self, rect, scale_x, scale_y):
+        return pygame.Rect(
+            int(rect.x * scale_x),
+            int(rect.y * scale_y),
+            max(1, int(rect.width * scale_x)),
+            max(1, int(rect.height * scale_y)),
+        )
+
+    # [2026-03-16] Причина: определение, выбран ли конкретный слот по данным состояния menu.py.
+    def _is_slot_selected(self, menu, team_name, slot_index):
+        return (
+            getattr(menu, "selected_right", -1) == -1
+            and getattr(menu, "selected_team", "") == team_name
+            and getattr(menu, "selected_slot", -1) == slot_index
+        )
+
+    # [2026-03-16] Причина: procedural-отрисовка ячейки (empty/filled + blink) без новых ассетов.
+    def _draw_slot(self, screen, rect, filled, blink_on, selected):
+        if filled:
+            fill_color = (40, 90, 165) if not (selected and blink_on) else (80, 150, 240)
+            border_color = (70, 140, 220) if not (selected and blink_on) else (170, 225, 255)
+        else:
+            fill_color = (22, 30, 52) if not (selected and blink_on) else (48, 70, 110)
+            border_color = (40, 90, 165) if not (selected and blink_on) else (130, 200, 255)
+
+        pygame.draw.rect(screen, fill_color, rect)
+        pygame.draw.rect(screen, border_color, rect, max(1, rect.width // 14))
+
+    # [2026-03-16] Причина: безопасный fallback для визуализации занятого слота, когда нет явной иконки корабля.
+    def _draw_ship_icon_in_slot(self, screen, ship_name, rect):
+        if not ship_name:
+            return
+
+        icon_w = max(4, rect.width // 2)
+        icon_h = max(4, rect.height // 2)
+        icon_rect = pygame.Rect(
+            rect.centerx - icon_w // 2,
+            rect.centery - icon_h // 2,
+            icon_w,
+            icon_h,
+        )
+        pygame.draw.rect(screen, (210, 235, 255), icon_rect)
+        pygame.draw.rect(screen, (8, 30, 80), icon_rect, 1)
+
+        short = ship_name[:2].upper()
+        txt = self._slot_font.render(short, True, (8, 30, 80))
+        txt_pos = (
+            icon_rect.centerx - txt.get_width() // 2,
+            icon_rect.centery - txt.get_height() // 2,
+        )
+        screen.blit(txt, txt_pos)
+
+    # [2026-03-16] Причина: отрисовка сетки команды 2x7 и визуального blink выбранного слота.
+    def _draw_team_grid(self, menu, screen, team_name, base_rect, scale_x, scale_y, blink_on):
+        scaled_rect = self._scale_rect(base_rect, scale_x, scale_y)
+        cols = GRID_COLS
+        rows = GRID_ROWS
+        slots_count = min(getattr(menu, "team_slots", 14), cols * rows)
+
+        gap_x = max(2, scaled_rect.width // 100)
+        gap_y = max(2, scaled_rect.height // 18)
+        slot_w = max(6, (scaled_rect.width - gap_x * (cols - 1)) // cols)
+        slot_h = max(6, (scaled_rect.height - gap_y * (rows - 1)) // rows)
+
+        team_slots = menu.teams.get(team_name, [])
+
+        for slot_index in range(slots_count):
+            row = slot_index // cols
+            col = slot_index % cols
+            slot_rect = pygame.Rect(
+                scaled_rect.x + col * (slot_w + gap_x),
+                scaled_rect.y + row * (slot_h + gap_y),
+                slot_w,
+                slot_h,
+            )
+
+            ship_name = team_slots[slot_index] if slot_index < len(team_slots) else None
+            filled = ship_name is not None
+            selected = self._is_slot_selected(menu, team_name, slot_index)
+
+            self._draw_slot(screen, slot_rect, filled, blink_on, selected)
+            if filled:
+                self._draw_ship_icon_in_slot(screen, ship_name, slot_rect)
 
     def draw_background(self, screen, frame_index):
         # [2026-02-03] reason: compatibility API keeps external calls stable.
@@ -104,7 +197,7 @@ class MeleeMenuRenderer:
             else:
                 msg = "All anchors captured. Disable AUTO_ANCHOR_MODE."
 
-            screen.blit(font.render(msg, True, (255,255,0)), (20, 20))
+            screen.blit(font.render(msg, True, (255, 255, 0)), (20, 20))
 
         if DEBUG_GRID:
             # [2026-02-03] reason: debug overlay for 320x240 grid and control anchors.
@@ -126,6 +219,11 @@ class MeleeMenuRenderer:
             t2x = int(TEAM2_POS[0] * scale_x)
             t2y = int(TEAM2_POS[1] * scale_y)
             pygame.draw.circle(screen, (0, 255, 0), (t2x, t2y), 6)
+
+        # [2026-03-16] Причина: визуальный blink выбранного слота без изменения состояния menu.py.
+        blink_on = (pygame.time.get_ticks() // 250) % 2 == 0
+        self._draw_team_grid(menu, screen, "Team 1", TEAM1_GRID_RECT, scale_x, scale_y, blink_on)
+        self._draw_team_grid(menu, screen, "Team 2", TEAM2_GRID_RECT, scale_x, scale_y, blink_on)
 
         team1_x = int(TEAM1_POS[0] * scale_x)
         team1_y = int(TEAM1_POS[1] * scale_y)
