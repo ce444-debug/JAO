@@ -32,9 +32,9 @@ GRID_ROWS = 2
 TEAM1_NAME_RECT = pygame.Rect(8, 44, 130, 12)
 TEAM2_NAME_RECT = pygame.Rect(8, 137, 130, 12)
 
-# [2026-03-17] Причина: базовая геометрия правой preview/info панели.
-PREVIEW_RECT = pygame.Rect(220, 78, 96, 148)
-PREVIEW_ICON_RECT = pygame.Rect(243, 108, 50, 38)
+# [2026-03-17] Причина: геометрия существующей battle-area справа (без добавления нового UI-блока).
+BATTLE_AREA_RECT = pygame.Rect(220, 78, 96, 148)
+BATTLE_AREA_ICON_RECT = pygame.Rect(243, 108, 50, 38)
 CREW_METER_RECT = pygame.Rect(228, 154, 8, 62)
 BATT_METER_RECT = pygame.Rect(300, 154, 8, 62)
 METER_SEGMENTS = 10
@@ -367,10 +367,14 @@ class MeleeMenuRenderer:
             color = active_color if i < active_segments else inactive_color
             pygame.draw.rect(screen, color, seg_rect)
 
-    # [2026-03-17] Причина: context-sensitive preview/info panel для ship/empty/team-name без изменения menu-логики.
-    def _draw_preview_panel(self, menu, screen, scale_x, scale_y):
+    # [2026-03-17] Причина: context-sensitive содержимое существующей battle-area справа.
+    def _draw_battle_area_content(self, menu, screen, scale_x, scale_y):
         ctx = self._build_preview_context(menu)
-        panel = self._scale_rect(PREVIEW_RECT, scale_x, scale_y)
+        if ctx["kind"] == "none":
+            # [2026-03-17] Причина: в right-action контексте сохраняем штатное отображение battle-area.
+            return
+
+        panel = self._scale_rect(BATTLE_AREA_RECT, scale_x, scale_y)
         pygame.draw.rect(screen, (8, 20, 52), panel)
         pygame.draw.rect(screen, (40, 90, 165), panel, 1)
 
@@ -381,7 +385,7 @@ class MeleeMenuRenderer:
             title_surface = self._preview_title_font.render(title, True, (230, 240, 255))
             screen.blit(title_surface, (panel.x + 4, panel.y + 4))
 
-            icon_rect = self._scale_rect(PREVIEW_ICON_RECT, scale_x, scale_y)
+            icon_rect = self._scale_rect(BATTLE_AREA_ICON_RECT, scale_x, scale_y)
             pygame.draw.rect(screen, (16, 36, 78), icon_rect)
             pygame.draw.rect(screen, (70, 130, 200), icon_rect, 1)
 
@@ -508,8 +512,8 @@ class MeleeMenuRenderer:
         self._draw_team_grid(menu, screen, "Team 1", TEAM1_GRID_RECT, scale_x, scale_y, blink_on)
         self._draw_team_grid(menu, screen, "Team 2", TEAM2_GRID_RECT, scale_x, scale_y, blink_on)
 
-        # [2026-03-17] Причина: context-sensitive preview panel справа для слота/имени команды.
-        self._draw_preview_panel(menu, screen, scale_x, scale_y)
+        # [2026-03-17] Причина: context-sensitive контент в существующей battle-area справа.
+        self._draw_battle_area_content(menu, screen, scale_x, scale_y)
 
         team1_x = int(TEAM1_POS[0] * scale_x)
         team1_y = int(TEAM1_POS[1] * scale_y)
