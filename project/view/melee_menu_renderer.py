@@ -375,8 +375,6 @@ class MeleeMenuRenderer:
             return
 
         panel = self._scale_rect(BATTLE_AREA_RECT, scale_x, scale_y)
-        pygame.draw.rect(screen, (8, 20, 52), panel)
-        pygame.draw.rect(screen, (40, 90, 165), panel, 1)
 
         if ctx["kind"] == "ship":
             ship_name = ctx["ship_name"]
@@ -511,9 +509,6 @@ class MeleeMenuRenderer:
         blink_on = (pygame.time.get_ticks() // 250) % 2 == 0
         self._draw_team_grid(menu, screen, "Team 1", TEAM1_GRID_RECT, scale_x, scale_y, blink_on)
         self._draw_team_grid(menu, screen, "Team 2", TEAM2_GRID_RECT, scale_x, scale_y, blink_on)
-
-        # [2026-03-17] Причина: context-sensitive контент в существующей battle-area справа.
-        self._draw_battle_area_content(menu, screen, scale_x, scale_y)
 
         team1_x = int(TEAM1_POS[0] * scale_x)
         team1_y = int(TEAM1_POS[1] * scale_y)
@@ -680,3 +675,6 @@ class MeleeMenuRenderer:
                 battle_y - battle_scaled.get_height() // 2,
             ),
         )
+
+        # [2026-03-17] Причина: context-sensitive контент рисуется поверх существующей battle-area.
+        self._draw_battle_area_content(menu, screen, scale_x, scale_y)
