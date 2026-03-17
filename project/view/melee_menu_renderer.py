@@ -32,11 +32,8 @@ GRID_ROWS = 2
 TEAM1_NAME_RECT = pygame.Rect(8, 44, 130, 12)
 TEAM2_NAME_RECT = pygame.Rect(8, 137, 130, 12)
 
-# [2026-03-17] Причина: геометрия существующей battle-area справа (без добавления нового UI-блока).
+# [2026-03-17] Причина: базовая геометрия области preview внутри существующего BATTLE-спрайта (320x240).
 BATTLE_AREA_RECT = pygame.Rect(220, 78, 96, 148)
-BATTLE_AREA_ICON_RECT = pygame.Rect(243, 108, 50, 38)
-CREW_METER_RECT = pygame.Rect(228, 154, 8, 62)
-BATT_METER_RECT = pygame.Rect(300, 154, 8, 62)
 METER_SEGMENTS = 10
 
 # [2026-02-03] reason: control option order must match menu logic values.
@@ -367,23 +364,74 @@ class MeleeMenuRenderer:
             color = active_color if i < active_segments else inactive_color
             pygame.draw.rect(screen, color, seg_rect)
 
-    # [2026-03-17] Причина: context-sensitive содержимое существующей battle-area справа.
-    def _draw_battle_area_content(self, menu, screen, scale_x, scale_y):
+    # [2026-03-17] Причина: построение внутренних sub-rect для динамики строго внутри фактического rect BATTLE-спрайта.
+    def _build_battle_panel_subrects(self, panel_rect):
+        pad_x = max(4, panel_rect.width // 18)
+        pad_y = max(4, panel_rect.height // 22)
+
+        content_left = panel_rect.left + pad_x
+        content_top = panel_rect.top + pad_y
+        content_width = max(12, panel_rect.width - pad_x * 2)
+        content_height = max(12, panel_rect.height - pad_y * 2)
+
+        title_h = max(14, content_height // 6)
+        footer_h = max(16, content_height // 7)
+        meter_label_h = max(14, content_height // 8)
+        meter_w = max(6, content_width // 10)
+
+        title_rect = pygame.Rect(content_left, content_top, content_width, title_h)
+        cost_rect = pygame.Rect(content_left, panel_rect.bottom - pad_y - footer_h, content_width, footer_h)
+
+        meter_bottom = cost_rect.top - max(2, pad_y // 2)
+        meter_top = title_rect.bottom + max(2, pad_y)
+        meter_height = max(10, meter_bottom - meter_top - meter_label_h)
+
+        crew_meter_rect = pygame.Rect(content_left, meter_top, meter_w, meter_height)
+        batt_meter_rect = pygame.Rect(content_left + content_width - meter_w, meter_top, meter_w, meter_height)
+
+        crew_label_rect = pygame.Rect(crew_meter_rect.left, crew_meter_rect.bottom + 1, max(18, meter_w + 18), meter_label_h)
+        batt_label_rect = pygame.Rect(max(content_left, batt_meter_rect.right - max(18, meter_w + 18)), batt_meter_rect.bottom + 1, max(18, meter_w + 18), meter_label_h)
+
+        icon_left = crew_meter_rect.right + max(2, pad_x // 2)
+        icon_right = batt_meter_rect.left - max(2, pad_x // 2)
+        icon_rect = pygame.Rect(
+            icon_left,
+            meter_top,
+            max(8, icon_right - icon_left),
+            max(8, meter_bottom - meter_top),
+        )
+
+        return {
+            "title": title_rect,
+            "icon": icon_rect,
+            "crew_meter": crew_meter_rect,
+            "batt_meter": batt_meter_rect,
+            "crew_label": crew_label_rect,
+            "batt_label": batt_label_rect,
+            "cost": cost_rect,
+        }
+
+    # [2026-03-17] Причина: context-sensitive контент привязан к фактическому rect уже отрисованного BATTLE-спрайта.
+    def _draw_battle_area_content(self, menu, screen, panel_rect):
         ctx = self._build_preview_context(menu)
         if ctx["kind"] == "none":
             # [2026-03-17] Причина: в right-action контексте сохраняем штатное отображение battle-area.
             return
 
-        panel = self._scale_rect(BATTLE_AREA_RECT, scale_x, scale_y)
+        sub = self._build_battle_panel_subrects(panel_rect)
 
         if ctx["kind"] == "ship":
             ship_name = ctx["ship_name"]
             stats = self._get_ship_stats(ship_name)
             title = stats["name"] if stats else ship_name
             title_surface = self._preview_title_font.render(title, True, (230, 240, 255))
-            screen.blit(title_surface, (panel.x + 4, panel.y + 4))
+            title_pos = (
+                sub["title"].x,
+                sub["title"].y + max(0, (sub["title"].height - title_surface.get_height()) // 2),
+            )
+            screen.blit(title_surface, title_pos)
 
-            icon_rect = self._scale_rect(BATTLE_AREA_ICON_RECT, scale_x, scale_y)
+            icon_rect = sub["icon"]
             pygame.draw.rect(screen, (16, 36, 78), icon_rect)
             pygame.draw.rect(screen, (70, 130, 200), icon_rect, 1)
 
@@ -408,30 +456,45 @@ class MeleeMenuRenderer:
             cost = stats["cost"] if stats else 0
 
             cost_txt = self._preview_font.render(f"COST {cost}", True, (220, 230, 255))
+            cost_pos = (
+                sub["cost"].x,
+                sub["cost"].y + max(0, (sub["cost"].height - cost_txt.get_height()) // 2),
+            )
+            screen.blit(cost_txt, cost_pos)
+
             crew_txt = self._preview_font.render(f"CREW {crew}", True, (190, 245, 190))
             batt_txt = self._preview_font.render(f"BATT {batt}", True, (255, 190, 190))
-            screen.blit(cost_txt, (panel.x + 4, panel.y + panel.height - cost_txt.get_height() - 4))
-            screen.blit(crew_txt, (panel.x + 14, panel.y + panel.height - crew_txt.get_height() - 22))
-            screen.blit(batt_txt, (panel.x + panel.width - batt_txt.get_width() - 14, panel.y + panel.height - batt_txt.get_height() - 22))
+            screen.blit(crew_txt, (sub["crew_label"].x, sub["crew_label"].y))
+            screen.blit(batt_txt, (sub["batt_label"].right - batt_txt.get_width(), sub["batt_label"].y))
 
-            crew_meter = self._scale_rect(CREW_METER_RECT, scale_x, scale_y)
-            batt_meter = self._scale_rect(BATT_METER_RECT, scale_x, scale_y)
-            self._draw_vertical_meter(screen, crew_meter, crew, max_crew, (70, 220, 70), (22, 55, 22))
-            self._draw_vertical_meter(screen, batt_meter, batt, max_batt, (220, 70, 70), (55, 22, 22))
+            self._draw_vertical_meter(screen, sub["crew_meter"], crew, max_crew, (70, 220, 70), (22, 55, 22))
+            self._draw_vertical_meter(screen, sub["batt_meter"], batt, max_batt, (220, 70, 70), (55, 22, 22))
             return
 
         if ctx["kind"] == "empty":
             label = self._preview_title_font.render("EMPTY SLOT", True, (230, 240, 255))
-            screen.blit(label, (panel.x + 6, panel.y + 8))
+            label_pos = (
+                sub["title"].x,
+                sub["title"].y + max(0, (sub["title"].height - label.get_height()) // 2),
+            )
+            screen.blit(label, label_pos)
             return
 
         if ctx["kind"] == "team_name":
             label = self._preview_title_font.render("TEAM NAME", True, (230, 240, 255))
-            screen.blit(label, (panel.x + 6, panel.y + 8))
+            label_pos = (
+                sub["title"].x,
+                sub["title"].y + max(0, (sub["title"].height - label.get_height()) // 2),
+            )
+            screen.blit(label, label_pos)
             team = ctx.get("team", "Team 1")
             team_name = menu.team_names.get(team, team.upper())
             team_text = self._preview_font.render(team_name, True, (200, 220, 255))
-            screen.blit(team_text, (panel.x + 6, panel.y + 28))
+            team_pos = (
+                sub["icon"].x,
+                sub["icon"].y + max(0, (sub["icon"].height - team_text.get_height()) // 2),
+            )
+            screen.blit(team_text, team_pos)
 
     def draw_background(self, screen, frame_index):
         # [2026-02-03] reason: compatibility API keeps external calls stable.
@@ -668,13 +731,13 @@ class MeleeMenuRenderer:
                 int(battle_img.get_height() * scale_y),
             ),
         )
-        screen.blit(
-            battle_scaled,
-            (
-                battle_x - battle_scaled.get_width() // 2,
-                battle_y - battle_scaled.get_height() // 2,
-            ),
+        battle_rect = pygame.Rect(
+            battle_x - battle_scaled.get_width() // 2,
+            battle_y - battle_scaled.get_height() // 2,
+            battle_scaled.get_width(),
+            battle_scaled.get_height(),
         )
+        screen.blit(battle_scaled, battle_rect.topleft)
 
-        # [2026-03-17] Причина: context-sensitive контент рисуется поверх существующей battle-area.
-        self._draw_battle_area_content(menu, screen, scale_x, scale_y)
+        # [2026-03-17] Причина: context-sensitive контент рисуется относительно фактически отрисованного rect BATTLE-спрайта.
+        self._draw_battle_area_content(menu, screen, battle_rect)
