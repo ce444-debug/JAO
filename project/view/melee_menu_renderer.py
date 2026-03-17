@@ -4,6 +4,7 @@
 import os
 import pygame
 from project.config import SCREEN_W, SCREEN_H
+from project.ships.registry import SHIP_CLASSES
 
 
 DEBUG_GRID = True
@@ -26,6 +27,17 @@ TEAM1_GRID_RECT = pygame.Rect(8, 58, 206, 82)
 TEAM2_GRID_RECT = pygame.Rect(8, 151, 206, 82)
 GRID_COLS = 7
 GRID_ROWS = 2
+
+# [2026-03-17] Причина: базовая геометрия полей имён команд в main menu.
+TEAM1_NAME_RECT = pygame.Rect(8, 44, 130, 12)
+TEAM2_NAME_RECT = pygame.Rect(8, 137, 130, 12)
+
+# [2026-03-17] Причина: базовая геометрия правой preview/info панели.
+PREVIEW_RECT = pygame.Rect(220, 78, 96, 148)
+PREVIEW_ICON_RECT = pygame.Rect(243, 108, 50, 38)
+CREW_METER_RECT = pygame.Rect(228, 154, 8, 62)
+BATT_METER_RECT = pygame.Rect(300, 154, 8, 62)
+METER_SEGMENTS = 10
 
 # [2026-02-03] reason: control option order must match menu logic values.
 CONTROL_OPTIONS = [
@@ -59,12 +71,14 @@ class MeleeMenuRenderer:
         ]
         self._captured = {}
         self._anchor_step = 0
-        # [2026-03-16] Причина: компактный шрифт для placeholder-иконок кораблей внутри занятых слотов.
+
+        # [2026-03-16] Причина: шрифты и кэш для ship icon/preview rendering.
         self._slot_font = pygame.font.SysFont("Arial", 10)
-        # [2026-03-16] Причина: кэш загруженных оригинальных иконок кораблей для исключения загрузки в горячем цикле.
+        self._preview_font = pygame.font.SysFont("Arial", 13)
+        self._preview_title_font = pygame.font.SysFont("Arial", 14, bold=True)
         self._ship_icon_cache = {}
-        # [2026-03-16] Причина: кэш масштабированных иконок под размеры ячеек.
         self._ship_icon_scaled_cache = {}
+        self._ship_stats_cache = {}
 
     def _frame_path(self, frame_index):
         return os.path.join("assets", "ui", "menu", f"meleemenu-{frame_index:03d}.png")
@@ -106,6 +120,31 @@ class MeleeMenuRenderer:
 
         pygame.draw.rect(screen, fill_color, rect)
         pygame.draw.rect(screen, border_color, rect, max(1, rect.width // 14))
+
+    # [2026-03-17] Причина: контекстная подсветка поля имени команды при выборе заголовка команды.
+    def _draw_team_name(self, menu, screen, team_name, base_rect, scale_x, scale_y):
+        rect = self._scale_rect(base_rect, scale_x, scale_y)
+        name_value = menu.team_names.get(team_name, "")
+        if not name_value:
+            name_value = "TEAM 1" if team_name == "Team 1" else "TEAM 2"
+
+        selected_header = (
+            getattr(menu, "selected_right", -1) == -1
+            and getattr(menu, "selected_team", "") == team_name
+            and getattr(menu, "selected_slot", -1) == -1
+        )
+
+        bg_col = (20, 40, 84) if selected_header else (8, 20, 52)
+        br_col = (130, 200, 255) if selected_header else (50, 90, 160)
+        pygame.draw.rect(screen, bg_col, rect)
+        pygame.draw.rect(screen, br_col, rect, 1)
+
+        text_surface = self._preview_font.render(name_value, True, (230, 240, 255))
+        text_pos = (
+            rect.x + 3,
+            rect.y + max(0, (rect.height - text_surface.get_height()) // 2),
+        )
+        screen.blit(text_surface, text_pos)
 
     # [2026-03-16] Причина: безопасная нормализация имени корабля для маппинга иконок.
     def _normalize_ship_key(self, ship_name):
@@ -160,6 +199,45 @@ class MeleeMenuRenderer:
         scaled = pygame.transform.smoothscale(source, (scaled_w, scaled_h))
         self._ship_icon_scaled_cache[cache_key] = scaled
         return scaled
+
+    # [2026-03-17] Причина: получение статистики корабля для preview panel из существующей модели.
+    def _get_ship_stats(self, ship_name):
+        key = self._normalize_ship_key(ship_name)
+        if not key:
+            return None
+        if key in self._ship_stats_cache:
+            return self._ship_stats_cache[key]
+
+        ship_cls = SHIP_CLASSES.get(ship_name)
+        if ship_cls is None:
+            self._ship_stats_cache[key] = None
+            return None
+
+        try:
+            probe = ship_cls(0, 0, (255, 255, 255))
+            max_crew = int(getattr(probe, "max_crew", 0) or 0)
+            max_batt = int(getattr(probe, "max_energy", 0) or 0)
+            cost = int(getattr(probe, "cost", max_crew if max_crew > 0 else 0) or 0)
+            stats = {
+                "name": getattr(probe, "name", ship_name),
+                "crew": int(getattr(probe, "crew", max_crew) or 0),
+                "max_crew": max_crew,
+                "batt": int(getattr(probe, "energy", max_batt) or 0),
+                "max_batt": max_batt,
+                "cost": cost,
+            }
+        except Exception:
+            stats = {
+                "name": ship_name,
+                "crew": 0,
+                "max_crew": 0,
+                "batt": 0,
+                "max_batt": 0,
+                "cost": 0,
+            }
+
+        self._ship_stats_cache[key] = stats
+        return stats
 
     # [2026-03-16] Причина: рисование иконки корабля в пределах слота с приоритетом реальных ассетов.
     def _draw_ship_icon_in_slot(self, screen, ship_name, rect):
@@ -230,6 +308,129 @@ class MeleeMenuRenderer:
             if filled:
                 self._draw_ship_icon_in_slot(screen, ship_name, slot_rect)
 
+    # [2026-03-17] Причина: сбор контекста выбранного элемента для правой preview/info панели.
+    def _build_preview_context(self, menu):
+        if getattr(menu, "selected_right", -1) == -1:
+            team_name = getattr(menu, "selected_team", "Team 1")
+            slot_index = getattr(menu, "selected_slot", -1)
+
+            if slot_index == -1:
+                return {
+                    "kind": "team_name",
+                    "team": team_name,
+                    "label": "TEAM NAME",
+                }
+
+            team_slots = menu.teams.get(team_name, [])
+            ship_name = team_slots[slot_index] if 0 <= slot_index < len(team_slots) else None
+            if ship_name:
+                return {
+                    "kind": "ship",
+                    "team": team_name,
+                    "slot": slot_index,
+                    "ship_name": ship_name,
+                }
+            return {
+                "kind": "empty",
+                "team": team_name,
+                "slot": slot_index,
+                "label": "EMPTY SLOT",
+            }
+
+        return {
+            "kind": "none",
+            "label": "",
+        }
+
+    # [2026-03-17] Причина: отрисовка вертикального сегментного meter для CREW/BATT как в UQM-style preview.
+    def _draw_vertical_meter(self, screen, rect, value, max_value, active_color, inactive_color):
+        pygame.draw.rect(screen, (12, 24, 48), rect)
+        pygame.draw.rect(screen, (45, 80, 130), rect, 1)
+
+        if max_value <= 0:
+            ratio = 0.0
+        else:
+            ratio = max(0.0, min(1.0, float(value) / float(max_value)))
+
+        segment_gap = max(1, rect.height // 45)
+        seg_h = max(2, (rect.height - segment_gap * (METER_SEGMENTS + 1)) // METER_SEGMENTS)
+        seg_w = max(2, rect.width - 2)
+        active_segments = int(round(ratio * METER_SEGMENTS))
+
+        for i in range(METER_SEGMENTS):
+            seg_rect = pygame.Rect(
+                rect.x + 1,
+                rect.bottom - segment_gap - (i + 1) * seg_h - i * segment_gap,
+                seg_w,
+                seg_h,
+            )
+            color = active_color if i < active_segments else inactive_color
+            pygame.draw.rect(screen, color, seg_rect)
+
+    # [2026-03-17] Причина: context-sensitive preview/info panel для ship/empty/team-name без изменения menu-логики.
+    def _draw_preview_panel(self, menu, screen, scale_x, scale_y):
+        ctx = self._build_preview_context(menu)
+        panel = self._scale_rect(PREVIEW_RECT, scale_x, scale_y)
+        pygame.draw.rect(screen, (8, 20, 52), panel)
+        pygame.draw.rect(screen, (40, 90, 165), panel, 1)
+
+        if ctx["kind"] == "ship":
+            ship_name = ctx["ship_name"]
+            stats = self._get_ship_stats(ship_name)
+            title = stats["name"] if stats else ship_name
+            title_surface = self._preview_title_font.render(title, True, (230, 240, 255))
+            screen.blit(title_surface, (panel.x + 4, panel.y + 4))
+
+            icon_rect = self._scale_rect(PREVIEW_ICON_RECT, scale_x, scale_y)
+            pygame.draw.rect(screen, (16, 36, 78), icon_rect)
+            pygame.draw.rect(screen, (70, 130, 200), icon_rect, 1)
+
+            ship_icon = self._get_scaled_ship_icon(
+                ship_name,
+                max(8, icon_rect.width - 4),
+                max(8, icon_rect.height - 4),
+            )
+            if ship_icon is not None:
+                icon_pos = (
+                    icon_rect.centerx - ship_icon.get_width() // 2,
+                    icon_rect.centery - ship_icon.get_height() // 2,
+                )
+                screen.blit(ship_icon, icon_pos)
+            else:
+                self._draw_ship_icon_in_slot(screen, ship_name, icon_rect)
+
+            crew = stats["crew"] if stats else 0
+            max_crew = stats["max_crew"] if stats else 0
+            batt = stats["batt"] if stats else 0
+            max_batt = stats["max_batt"] if stats else 0
+            cost = stats["cost"] if stats else 0
+
+            cost_txt = self._preview_font.render(f"COST {cost}", True, (220, 230, 255))
+            crew_txt = self._preview_font.render(f"CREW {crew}", True, (190, 245, 190))
+            batt_txt = self._preview_font.render(f"BATT {batt}", True, (255, 190, 190))
+            screen.blit(cost_txt, (panel.x + 4, panel.y + panel.height - cost_txt.get_height() - 4))
+            screen.blit(crew_txt, (panel.x + 14, panel.y + panel.height - crew_txt.get_height() - 22))
+            screen.blit(batt_txt, (panel.x + panel.width - batt_txt.get_width() - 14, panel.y + panel.height - batt_txt.get_height() - 22))
+
+            crew_meter = self._scale_rect(CREW_METER_RECT, scale_x, scale_y)
+            batt_meter = self._scale_rect(BATT_METER_RECT, scale_x, scale_y)
+            self._draw_vertical_meter(screen, crew_meter, crew, max_crew, (70, 220, 70), (22, 55, 22))
+            self._draw_vertical_meter(screen, batt_meter, batt, max_batt, (220, 70, 70), (55, 22, 22))
+            return
+
+        if ctx["kind"] == "empty":
+            label = self._preview_title_font.render("EMPTY SLOT", True, (230, 240, 255))
+            screen.blit(label, (panel.x + 6, panel.y + 8))
+            return
+
+        if ctx["kind"] == "team_name":
+            label = self._preview_title_font.render("TEAM NAME", True, (230, 240, 255))
+            screen.blit(label, (panel.x + 6, panel.y + 8))
+            team = ctx.get("team", "Team 1")
+            team_name = menu.team_names.get(team, team.upper())
+            team_text = self._preview_font.render(team_name, True, (200, 220, 255))
+            screen.blit(team_text, (panel.x + 6, panel.y + 28))
+
     def draw_background(self, screen, frame_index):
         # [2026-02-03] reason: compatibility API keeps external calls stable.
         bg = self.ui_sprites[0]
@@ -298,10 +499,17 @@ class MeleeMenuRenderer:
             t2y = int(TEAM2_POS[1] * scale_y)
             pygame.draw.circle(screen, (0, 255, 0), (t2x, t2y), 6)
 
+        # [2026-03-17] Причина: имена команд должны быть видны и подсвечиваться при выборе header-поля.
+        self._draw_team_name(menu, screen, "Team 1", TEAM1_NAME_RECT, scale_x, scale_y)
+        self._draw_team_name(menu, screen, "Team 2", TEAM2_NAME_RECT, scale_x, scale_y)
+
         # [2026-03-16] Причина: визуальный blink выбранного слота без изменения состояния menu.py.
         blink_on = (pygame.time.get_ticks() // 250) % 2 == 0
         self._draw_team_grid(menu, screen, "Team 1", TEAM1_GRID_RECT, scale_x, scale_y, blink_on)
         self._draw_team_grid(menu, screen, "Team 2", TEAM2_GRID_RECT, scale_x, scale_y, blink_on)
+
+        # [2026-03-17] Причина: context-sensitive preview panel справа для слота/имени команды.
+        self._draw_preview_panel(menu, screen, scale_x, scale_y)
 
         team1_x = int(TEAM1_POS[0] * scale_x)
         team1_y = int(TEAM1_POS[1] * scale_y)
