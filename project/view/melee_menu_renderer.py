@@ -339,27 +339,26 @@ class MeleeMenuRenderer:
             "label": "",
         }
 
-    # [2026-03-19] Причина: CREW/BATT meters должны рендерить 1 block на 1 реальную единицу в двух вертикальных колонках.
+    # [2026-03-19] Причина: CREW/BATT meters должны быть variable-height stack из малых блоков, где 1 block = 1 unit.
     def _draw_vertical_meter(self, screen, rect, value, max_value, active_color, inactive_color):
-        pygame.draw.rect(screen, (12, 24, 48), rect)
-        pygame.draw.rect(screen, (45, 80, 130), rect, 1)
-
-        total_units = max(0, int(max_value or value or 0))
-        filled_units = max(0, min(int(value or 0), total_units if total_units > 0 else int(value or 0)))
-        if total_units <= 0:
+        units = max(0, int(value or 0))
+        if units <= 0:
             return
 
         cols = 2
-        rows = max(1, (total_units + cols - 1) // cols)
-        gap = max(1, min(rect.width, rect.height) // 18)
-        block_w = max(2, (rect.width - gap * (cols + 1)) // cols)
-        block_h = max(2, (rect.height - gap * (rows + 1)) // rows)
+        rows = max(1, (units + cols - 1) // cols)
+        gap = max(1, min(rect.width, rect.height) // 20)
+        block_w = max(2, min((rect.width - gap * (cols - 1)) // cols, rect.width // 2))
+        block_h = block_w
 
-        content_w = cols * block_w + (cols - 1) * gap
-        start_x = rect.x + max(1, (rect.width - content_w) // 2)
-        bottom_y = rect.bottom - gap - block_h
+        total_h = rows * block_h + (rows - 1) * gap
+        start_x = rect.x + max(0, (rect.width - (cols * block_w + gap)) // 2)
+        bottom_y = rect.bottom - block_h
 
-        for unit_index in range(total_units):
+        edge_color = tuple(max(0, c - 60) for c in active_color)
+        highlight_color = tuple(min(255, c + 35) for c in active_color)
+
+        for unit_index in range(units):
             row = unit_index // cols
             col = unit_index % cols
             block_rect = pygame.Rect(
@@ -368,8 +367,13 @@ class MeleeMenuRenderer:
                 block_w,
                 block_h,
             )
-            color = active_color if unit_index < filled_units else inactive_color
-            pygame.draw.rect(screen, color, block_rect)
+            if block_rect.top < rect.top:
+                break
+            pygame.draw.rect(screen, active_color, block_rect)
+            pygame.draw.rect(screen, edge_color, block_rect, 1)
+            if block_rect.width > 2 and block_rect.height > 2:
+                highlight = pygame.Rect(block_rect.x + 1, block_rect.y + 1, block_rect.width - 2, max(1, block_rect.height // 3))
+                pygame.draw.rect(screen, highlight_color, highlight)
 
     # [2026-03-17] Причина: построение внутренних sub-rect для динамики строго внутри фактического rect BATTLE-спрайта.
     def _build_battle_panel_subrects(self, panel_rect):
