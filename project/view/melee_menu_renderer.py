@@ -411,6 +411,19 @@ class MeleeMenuRenderer:
             "cost": cost_rect,
         }
 
+    # [2026-03-19] Причина: clean procedural background для non-default context panel без crop/subsurface из общего menu background.
+    def _draw_context_panel_background(self, screen, panel_rect):
+        outer = panel_rect.copy()
+        pygame.draw.rect(screen, (120, 124, 138), outer)
+        pygame.draw.rect(screen, (185, 190, 205), outer, 1)
+
+        inner = outer.inflate(-max(4, outer.width // 14), -max(4, outer.height // 16))
+        pygame.draw.rect(screen, (14, 24, 56), inner)
+        pygame.draw.rect(screen, (58, 88, 140), inner, 1)
+
+        content = inner.inflate(-max(2, inner.width // 18), -max(2, inner.height // 18))
+        pygame.draw.rect(screen, (10, 18, 42), content)
+
     # [2026-03-17] Причина: context-sensitive контент привязан к фактическому rect panel и рисуется только для preview-режимов.
     def _draw_battle_area_content(self, menu, screen, panel_rect, ctx):
         sub = self._build_battle_panel_subrects(panel_rect)
@@ -739,7 +752,5 @@ class MeleeMenuRenderer:
             screen.blit(battle_scaled, battle_rect.topleft)
         else:
             # [2026-03-19] Причина: preview/empty/team modes должны переключать содержимое panel, а не наслаиваться на BATTLE!-состояние.
-            panel_bg = bg_scaled.subsurface(self._scale_rect(BATTLE_AREA_RECT, scale_x, scale_y)).copy()
-            panel_bg = pygame.transform.smoothscale(panel_bg, battle_rect.size)
-            screen.blit(panel_bg, battle_rect.topleft)
+            self._draw_context_panel_background(screen, battle_rect)
             self._draw_battle_area_content(menu, screen, battle_rect, panel_mode)
