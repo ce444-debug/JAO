@@ -339,7 +339,7 @@ class MeleeMenuRenderer:
             "label": "",
         }
 
-    # [2026-03-19] Причина: CREW/BATT meters должны быть variable-height stack из малых блоков, где 1 block = 1 unit.
+    # [2026-03-19] Причина: CREW/BATT meters должны рендерить ровно N cube-блоков для значения N, без потери видимых единиц.
     def _draw_vertical_meter(self, screen, rect, value, max_value, active_color, inactive_color):
         units = max(0, int(value or 0))
         if units <= 0:
@@ -347,13 +347,16 @@ class MeleeMenuRenderer:
 
         cols = 2
         rows = max(1, (units + cols - 1) // cols)
-        gap = max(1, min(rect.width, rect.height) // 20)
-        block_w = max(2, min((rect.width - gap * (cols - 1)) // cols, rect.width // 2))
-        block_h = block_w
+        gap = 1 if rows > 8 else 2
 
-        total_h = rows * block_h + (rows - 1) * gap
-        start_x = rect.x + max(0, (rect.width - (cols * block_w + gap)) // 2)
-        bottom_y = rect.bottom - block_h
+        max_block_w = max(1, (rect.width - gap * (cols - 1)) // cols)
+        max_block_h = max(1, (rect.height - gap * (rows - 1)) // rows)
+        block_size = max(1, min(max_block_w, max_block_h))
+
+        content_w = cols * block_size + gap * (cols - 1)
+        content_h = rows * block_size + gap * (rows - 1)
+        start_x = rect.x + max(0, (rect.width - content_w) // 2)
+        start_y = rect.bottom - content_h
 
         edge_color = tuple(max(0, c - 60) for c in active_color)
         highlight_color = tuple(min(255, c + 35) for c in active_color)
@@ -362,13 +365,11 @@ class MeleeMenuRenderer:
             row = unit_index // cols
             col = unit_index % cols
             block_rect = pygame.Rect(
-                start_x + col * (block_w + gap),
-                bottom_y - row * (block_h + gap),
-                block_w,
-                block_h,
+                start_x + col * (block_size + gap),
+                start_y + content_h - block_size - row * (block_size + gap),
+                block_size,
+                block_size,
             )
-            if block_rect.top < rect.top:
-                break
             pygame.draw.rect(screen, active_color, block_rect)
             pygame.draw.rect(screen, edge_color, block_rect, 1)
             if block_rect.width > 2 and block_rect.height > 2:
