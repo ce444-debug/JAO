@@ -339,30 +339,37 @@ class MeleeMenuRenderer:
             "label": "",
         }
 
-    # [2026-03-17] Причина: отрисовка вертикального сегментного meter для CREW/BATT как в UQM-style preview.
+    # [2026-03-19] Причина: CREW/BATT meters должны рендерить 1 block на 1 реальную единицу в двух вертикальных колонках.
     def _draw_vertical_meter(self, screen, rect, value, max_value, active_color, inactive_color):
         pygame.draw.rect(screen, (12, 24, 48), rect)
         pygame.draw.rect(screen, (45, 80, 130), rect, 1)
 
-        if max_value <= 0:
-            ratio = 0.0
-        else:
-            ratio = max(0.0, min(1.0, float(value) / float(max_value)))
+        total_units = max(0, int(max_value or value or 0))
+        filled_units = max(0, min(int(value or 0), total_units if total_units > 0 else int(value or 0)))
+        if total_units <= 0:
+            return
 
-        segment_gap = max(1, rect.height // 45)
-        seg_h = max(2, (rect.height - segment_gap * (METER_SEGMENTS + 1)) // METER_SEGMENTS)
-        seg_w = max(2, rect.width - 2)
-        active_segments = int(round(ratio * METER_SEGMENTS))
+        cols = 2
+        rows = max(1, (total_units + cols - 1) // cols)
+        gap = max(1, min(rect.width, rect.height) // 18)
+        block_w = max(2, (rect.width - gap * (cols + 1)) // cols)
+        block_h = max(2, (rect.height - gap * (rows + 1)) // rows)
 
-        for i in range(METER_SEGMENTS):
-            seg_rect = pygame.Rect(
-                rect.x + 1,
-                rect.bottom - segment_gap - (i + 1) * seg_h - i * segment_gap,
-                seg_w,
-                seg_h,
+        content_w = cols * block_w + (cols - 1) * gap
+        start_x = rect.x + max(1, (rect.width - content_w) // 2)
+        bottom_y = rect.bottom - gap - block_h
+
+        for unit_index in range(total_units):
+            row = unit_index // cols
+            col = unit_index % cols
+            block_rect = pygame.Rect(
+                start_x + col * (block_w + gap),
+                bottom_y - row * (block_h + gap),
+                block_w,
+                block_h,
             )
-            color = active_color if i < active_segments else inactive_color
-            pygame.draw.rect(screen, color, seg_rect)
+            color = active_color if unit_index < filled_units else inactive_color
+            pygame.draw.rect(screen, color, block_rect)
 
     # [2026-03-17] Причина: построение внутренних sub-rect для динамики строго внутри фактического rect BATTLE-спрайта.
     def _build_battle_panel_subrects(self, panel_rect):
