@@ -305,8 +305,8 @@ class MeleeMenuRenderer:
             if filled:
                 self._draw_ship_icon_in_slot(screen, ship_name, slot_rect)
 
-    # [2026-03-17] Причина: сбор контекста выбранного элемента для правой preview/info панели.
-    def _build_preview_context(self, menu):
+    # [2026-03-19] Причина: вычисление взаимоисключающего режима содержимого правой context-панели.
+    def _get_right_panel_mode(self, menu):
         if getattr(menu, "selected_right", -1) == -1:
             team_name = getattr(menu, "selected_team", "Team 1")
             slot_index = getattr(menu, "selected_slot", -1)
@@ -411,13 +411,8 @@ class MeleeMenuRenderer:
             "cost": cost_rect,
         }
 
-    # [2026-03-17] Причина: context-sensitive контент привязан к фактическому rect уже отрисованного BATTLE-спрайта.
-    def _draw_battle_area_content(self, menu, screen, panel_rect):
-        ctx = self._build_preview_context(menu)
-        if ctx["kind"] == "none":
-            # [2026-03-17] Причина: в right-action контексте сохраняем штатное отображение battle-area.
-            return
-
+    # [2026-03-17] Причина: context-sensitive контент привязан к фактическому rect panel и рисуется только для preview-режимов.
+    def _draw_battle_area_content(self, menu, screen, panel_rect, ctx):
         sub = self._build_battle_panel_subrects(panel_rect)
 
         if ctx["kind"] == "ship":
@@ -717,6 +712,8 @@ class MeleeMenuRenderer:
             ),
         )
 
+        panel_mode = self._get_right_panel_mode(menu)
+
         if selected == 3:
             battle_frame = 26
         else:
@@ -737,7 +734,12 @@ class MeleeMenuRenderer:
             battle_scaled.get_width(),
             battle_scaled.get_height(),
         )
-        screen.blit(battle_scaled, battle_rect.topleft)
 
-        # [2026-03-17] Причина: context-sensitive контент рисуется относительно фактически отрисованного rect BATTLE-спрайта.
-        self._draw_battle_area_content(menu, screen, battle_rect)
+        if panel_mode["kind"] == "none":
+            screen.blit(battle_scaled, battle_rect.topleft)
+        else:
+            # [2026-03-19] Причина: preview/empty/team modes должны переключать содержимое panel, а не наслаиваться на BATTLE!-состояние.
+            panel_bg = bg_scaled.subsurface(self._scale_rect(BATTLE_AREA_RECT, scale_x, scale_y)).copy()
+            panel_bg = pygame.transform.smoothscale(panel_bg, battle_rect.size)
+            screen.blit(panel_bg, battle_rect.topleft)
+            self._draw_battle_area_content(menu, screen, battle_rect, panel_mode)
