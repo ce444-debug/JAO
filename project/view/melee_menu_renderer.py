@@ -37,6 +37,7 @@ BATTLE_AREA_RECT = pygame.Rect(220, 78, 96, 148)
 METER_SEGMENTS = 10
 METER_CUBE_SIZE = 4
 METER_CUBE_GAP = 1
+METER_MAX_UNITS = 42
 
 # [2026-02-03] reason: control option order must match menu logic values.
 CONTROL_OPTIONS = [
@@ -388,14 +389,17 @@ class MeleeMenuRenderer:
         title_h = max(14, content_height // 6)
         footer_h = max(16, content_height // 7)
         meter_label_h = max(14, content_height // 8)
-        meter_w = max(6, content_width // 10)
+        meter_w = max(2 * METER_CUBE_SIZE + METER_CUBE_GAP, content_width // 10)
 
         title_rect = pygame.Rect(content_left, content_top, content_width, title_h)
         cost_rect = pygame.Rect(content_left, panel_rect.bottom - pad_y - footer_h, content_width, footer_h)
 
         meter_bottom = cost_rect.top - max(2, pad_y // 2)
         meter_top = title_rect.bottom + max(2, pad_y)
-        meter_height = max(10, meter_bottom - meter_top - meter_label_h)
+        meter_height = max(
+            METER_CUBE_SIZE * ((METER_MAX_UNITS + 1) // 2) + METER_CUBE_GAP * max(0, ((METER_MAX_UNITS + 1) // 2) - 1),
+            meter_bottom - meter_top - meter_label_h,
+        )
 
         crew_meter_rect = pygame.Rect(content_left, meter_top, meter_w, meter_height)
         batt_meter_rect = pygame.Rect(content_left + content_width - meter_w, meter_top, meter_w, meter_height)
