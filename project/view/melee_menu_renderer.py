@@ -39,15 +39,15 @@ METER_CUBE_SIZE = 4
 METER_CUBE_GAP = 1
 METER_MAX_UNITS = 42
 CARD_TITLE_RECT = pygame.Rect(8, 7, 80, 16)
-CARD_ICON_RECT = pygame.Rect(24, 28, 48, 40)
+CARD_ICON_RECT = pygame.Rect(20, 24, 56, 50)
 CARD_CREW_METER_RECT = pygame.Rect(10, 26, 9, 108)
 CARD_BATT_METER_RECT = pygame.Rect(77, 26, 9, 108)
-CARD_CREW_LABEL_RECT = pygame.Rect(8, 117, 28, 12)
-CARD_CREW_VALUE_RECT = pygame.Rect(8, 128, 18, 12)
-CARD_BATT_LABEL_RECT = pygame.Rect(60, 117, 28, 12)
-CARD_BATT_VALUE_RECT = pygame.Rect(70, 128, 18, 12)
-CARD_COST_LABEL_RECT = pygame.Rect(32, 118, 30, 10)
-CARD_COST_VALUE_RECT = pygame.Rect(33, 129, 28, 12)
+CARD_CREW_LABEL_RECT = pygame.Rect(4, 114, 28, 10)
+CARD_CREW_VALUE_RECT = pygame.Rect(4, 125, 20, 10)
+CARD_BATT_LABEL_RECT = pygame.Rect(64, 114, 28, 10)
+CARD_BATT_VALUE_RECT = pygame.Rect(72, 125, 20, 10)
+CARD_COST_LABEL_RECT = pygame.Rect(34, 114, 28, 10)
+CARD_COST_VALUE_RECT = pygame.Rect(34, 125, 28, 10)
 CARD_EMPTY_RECT = pygame.Rect(12, 58, 72, 16)
 CARD_TEAM_RECT = pygame.Rect(16, 58, 64, 16)
 
@@ -425,11 +425,12 @@ class MeleeMenuRenderer:
         pygame.draw.rect(screen, (185, 190, 205), outer, 1)
 
         inner = outer.inflate(-max(4, outer.width // 14), -max(4, outer.height // 16))
-        pygame.draw.rect(screen, (14, 24, 56), inner)
-        pygame.draw.rect(screen, (58, 88, 140), inner, 1)
+        pygame.draw.rect(screen, (148, 150, 156), inner)
+        pygame.draw.rect(screen, (210, 214, 220), inner, 1)
 
         content = inner.inflate(-max(2, inner.width // 18), -max(2, inner.height // 18))
-        pygame.draw.rect(screen, (10, 18, 42), content)
+        pygame.draw.rect(screen, (122, 126, 134), content)
+        pygame.draw.rect(screen, (94, 98, 108), content, 1)
 
     # [2026-03-17] Причина: context-sensitive контент привязан к фактическому rect panel и рисуется только для preview-режимов.
     def _draw_battle_area_content(self, menu, screen, panel_rect, ctx):
