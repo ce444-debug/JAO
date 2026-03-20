@@ -35,6 +35,8 @@ TEAM2_NAME_RECT = pygame.Rect(8, 137, 130, 12)
 # [2026-03-17] Причина: базовая геометрия области preview внутри существующего BATTLE-спрайта (320x240).
 BATTLE_AREA_RECT = pygame.Rect(220, 78, 96, 148)
 METER_SEGMENTS = 10
+METER_CUBE_SIZE = 4
+METER_CUBE_GAP = 1
 
 # [2026-02-03] reason: control option order must match menu logic values.
 CONTROL_OPTIONS = [
@@ -339,7 +341,7 @@ class MeleeMenuRenderer:
             "label": "",
         }
 
-    # [2026-03-19] Причина: CREW/BATT meters должны рендерить ровно N cube-блоков для значения N, без потери видимых единиц.
+    # [2026-03-20] Причина: CREW/BATT meters должны использовать фиксированный размер cube-блока; stat влияет только на число блоков.
     def _draw_vertical_meter(self, screen, rect, value, max_value, active_color, inactive_color):
         units = max(0, int(value or 0))
         if units <= 0:
@@ -347,11 +349,8 @@ class MeleeMenuRenderer:
 
         cols = 2
         rows = max(1, (units + cols - 1) // cols)
-        gap = 1 if rows > 8 else 2
-
-        max_block_w = max(1, (rect.width - gap * (cols - 1)) // cols)
-        max_block_h = max(1, (rect.height - gap * (rows - 1)) // rows)
-        block_size = max(1, min(max_block_w, max_block_h))
+        block_size = METER_CUBE_SIZE
+        gap = METER_CUBE_GAP
 
         content_w = cols * block_size + gap * (cols - 1)
         content_h = rows * block_size + gap * (rows - 1)
