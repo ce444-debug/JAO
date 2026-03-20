@@ -390,8 +390,8 @@ class MeleeMenuRenderer:
 
     # [2026-03-20] Причина: ship context card должен использовать фиксированный UQM-style sub-layout, а не адаптивное размещение по контенту.
     def _scale_card_local_rect(self, panel_rect, local_rect):
-        rel_x = (local_rect.x - BATTLE_AREA_RECT.x) / BATTLE_AREA_RECT.width
-        rel_y = (local_rect.y - BATTLE_AREA_RECT.y) / BATTLE_AREA_RECT.height
+        rel_x = local_rect.x / BATTLE_AREA_RECT.width
+        rel_y = local_rect.y / BATTLE_AREA_RECT.height
         rel_w = local_rect.width / BATTLE_AREA_RECT.width
         rel_h = local_rect.height / BATTLE_AREA_RECT.height
         return pygame.Rect(
