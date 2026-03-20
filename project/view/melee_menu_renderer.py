@@ -38,6 +38,18 @@ METER_SEGMENTS = 10
 METER_CUBE_SIZE = 4
 METER_CUBE_GAP = 1
 METER_MAX_UNITS = 42
+CARD_TITLE_RECT = pygame.Rect(8, 7, 80, 16)
+CARD_ICON_RECT = pygame.Rect(24, 28, 48, 40)
+CARD_CREW_METER_RECT = pygame.Rect(10, 26, 9, 108)
+CARD_BATT_METER_RECT = pygame.Rect(77, 26, 9, 108)
+CARD_CREW_LABEL_RECT = pygame.Rect(8, 117, 28, 12)
+CARD_CREW_VALUE_RECT = pygame.Rect(8, 128, 18, 12)
+CARD_BATT_LABEL_RECT = pygame.Rect(60, 117, 28, 12)
+CARD_BATT_VALUE_RECT = pygame.Rect(70, 128, 18, 12)
+CARD_COST_LABEL_RECT = pygame.Rect(32, 118, 30, 10)
+CARD_COST_VALUE_RECT = pygame.Rect(33, 129, 28, 12)
+CARD_EMPTY_RECT = pygame.Rect(12, 58, 72, 16)
+CARD_TEAM_RECT = pygame.Rect(16, 58, 64, 16)
 
 # [2026-02-03] reason: control option order must match menu logic values.
 CONTROL_OPTIONS = [
@@ -376,54 +388,34 @@ class MeleeMenuRenderer:
                 highlight = pygame.Rect(block_rect.x + 1, block_rect.y + 1, block_rect.width - 2, max(1, block_rect.height // 3))
                 pygame.draw.rect(screen, highlight_color, highlight)
 
-    # [2026-03-17] Причина: построение внутренних sub-rect для динамики строго внутри фактического rect BATTLE-спрайта.
+    # [2026-03-20] Причина: ship context card должен использовать фиксированный UQM-style sub-layout, а не адаптивное размещение по контенту.
+    def _scale_card_local_rect(self, panel_rect, local_rect):
+        rel_x = (local_rect.x - BATTLE_AREA_RECT.x) / BATTLE_AREA_RECT.width
+        rel_y = (local_rect.y - BATTLE_AREA_RECT.y) / BATTLE_AREA_RECT.height
+        rel_w = local_rect.width / BATTLE_AREA_RECT.width
+        rel_h = local_rect.height / BATTLE_AREA_RECT.height
+        return pygame.Rect(
+            panel_rect.x + int(panel_rect.width * rel_x),
+            panel_rect.y + int(panel_rect.height * rel_y),
+            max(1, int(panel_rect.width * rel_w)),
+            max(1, int(panel_rect.height * rel_h)),
+        )
+
+    # [2026-03-20] Причина: построение внутренних sub-rect ship card по фиксированной пиксельной раскладке оригинального preview card.
     def _build_battle_panel_subrects(self, panel_rect):
-        pad_x = max(4, panel_rect.width // 18)
-        pad_y = max(4, panel_rect.height // 22)
-
-        content_left = panel_rect.left + pad_x
-        content_top = panel_rect.top + pad_y
-        content_width = max(12, panel_rect.width - pad_x * 2)
-        content_height = max(12, panel_rect.height - pad_y * 2)
-
-        title_h = max(14, content_height // 6)
-        footer_h = max(16, content_height // 7)
-        meter_label_h = max(14, content_height // 8)
-        meter_w = max(2 * METER_CUBE_SIZE + METER_CUBE_GAP, content_width // 10)
-
-        title_rect = pygame.Rect(content_left, content_top, content_width, title_h)
-        cost_rect = pygame.Rect(content_left, panel_rect.bottom - pad_y - footer_h, content_width, footer_h)
-
-        meter_bottom = cost_rect.top - max(2, pad_y // 2)
-        meter_top = title_rect.bottom + max(2, pad_y)
-        meter_height = max(
-            METER_CUBE_SIZE * ((METER_MAX_UNITS + 1) // 2) + METER_CUBE_GAP * max(0, ((METER_MAX_UNITS + 1) // 2) - 1),
-            meter_bottom - meter_top - meter_label_h,
-        )
-
-        crew_meter_rect = pygame.Rect(content_left, meter_top, meter_w, meter_height)
-        batt_meter_rect = pygame.Rect(content_left + content_width - meter_w, meter_top, meter_w, meter_height)
-
-        crew_label_rect = pygame.Rect(crew_meter_rect.left, crew_meter_rect.bottom + 1, max(18, meter_w + 18), meter_label_h)
-        batt_label_rect = pygame.Rect(max(content_left, batt_meter_rect.right - max(18, meter_w + 18)), batt_meter_rect.bottom + 1, max(18, meter_w + 18), meter_label_h)
-
-        icon_left = crew_meter_rect.right + max(2, pad_x // 2)
-        icon_right = batt_meter_rect.left - max(2, pad_x // 2)
-        icon_rect = pygame.Rect(
-            icon_left,
-            meter_top,
-            max(8, icon_right - icon_left),
-            max(8, meter_bottom - meter_top),
-        )
-
         return {
-            "title": title_rect,
-            "icon": icon_rect,
-            "crew_meter": crew_meter_rect,
-            "batt_meter": batt_meter_rect,
-            "crew_label": crew_label_rect,
-            "batt_label": batt_label_rect,
-            "cost": cost_rect,
+            "title": self._scale_card_local_rect(panel_rect, CARD_TITLE_RECT),
+            "icon": self._scale_card_local_rect(panel_rect, CARD_ICON_RECT),
+            "crew_meter": self._scale_card_local_rect(panel_rect, CARD_CREW_METER_RECT),
+            "batt_meter": self._scale_card_local_rect(panel_rect, CARD_BATT_METER_RECT),
+            "crew_label": self._scale_card_local_rect(panel_rect, CARD_CREW_LABEL_RECT),
+            "crew_value": self._scale_card_local_rect(panel_rect, CARD_CREW_VALUE_RECT),
+            "batt_label": self._scale_card_local_rect(panel_rect, CARD_BATT_LABEL_RECT),
+            "batt_value": self._scale_card_local_rect(panel_rect, CARD_BATT_VALUE_RECT),
+            "cost_label": self._scale_card_local_rect(panel_rect, CARD_COST_LABEL_RECT),
+            "cost_value": self._scale_card_local_rect(panel_rect, CARD_COST_VALUE_RECT),
+            "empty": self._scale_card_local_rect(panel_rect, CARD_EMPTY_RECT),
+            "team": self._scale_card_local_rect(panel_rect, CARD_TEAM_RECT),
         }
 
     # [2026-03-19] Причина: clean procedural background для non-default context panel без crop/subsurface из общего menu background.
@@ -478,17 +470,27 @@ class MeleeMenuRenderer:
             max_batt = stats["max_batt"] if stats else 0
             cost = stats["cost"] if stats else 0
 
-            cost_txt = self._preview_font.render(f"COST {cost}", True, (220, 230, 255))
-            cost_pos = (
-                sub["cost"].x,
-                sub["cost"].y + max(0, (sub["cost"].height - cost_txt.get_height()) // 2),
+            cost_lbl = self._preview_font.render("COST", True, (220, 230, 255))
+            cost_txt = self._preview_font.render(str(cost), True, (220, 230, 255))
+            cost_lbl_pos = (
+                sub["cost_label"].centerx - cost_lbl.get_width() // 2,
+                sub["cost_label"].y,
             )
+            cost_pos = (
+                sub["cost_value"].centerx - cost_txt.get_width() // 2,
+                sub["cost_value"].y,
+            )
+            screen.blit(cost_lbl, cost_lbl_pos)
             screen.blit(cost_txt, cost_pos)
 
-            crew_txt = self._preview_font.render(f"CREW {crew}", True, (190, 245, 190))
-            batt_txt = self._preview_font.render(f"BATT {batt}", True, (255, 190, 190))
-            screen.blit(crew_txt, (sub["crew_label"].x, sub["crew_label"].y))
-            screen.blit(batt_txt, (sub["batt_label"].right - batt_txt.get_width(), sub["batt_label"].y))
+            crew_lbl = self._preview_font.render("CREW", True, (190, 245, 190))
+            crew_val = self._preview_font.render(str(crew), True, (190, 245, 190))
+            batt_lbl = self._preview_font.render("BATT", True, (255, 190, 190))
+            batt_val = self._preview_font.render(str(batt), True, (255, 190, 190))
+            screen.blit(crew_lbl, (sub["crew_label"].x, sub["crew_label"].y))
+            screen.blit(crew_val, (sub["crew_value"].x, sub["crew_value"].y))
+            screen.blit(batt_lbl, (sub["batt_label"].x, sub["batt_label"].y))
+            screen.blit(batt_val, (sub["batt_value"].right - batt_val.get_width(), sub["batt_value"].y))
 
             self._draw_vertical_meter(screen, sub["crew_meter"], crew, max_crew, (70, 220, 70), (22, 55, 22))
             self._draw_vertical_meter(screen, sub["batt_meter"], batt, max_batt, (220, 70, 70), (55, 22, 22))
@@ -497,8 +499,8 @@ class MeleeMenuRenderer:
         if ctx["kind"] == "empty":
             label = self._preview_title_font.render("EMPTY SLOT", True, (230, 240, 255))
             label_pos = (
-                sub["title"].x,
-                sub["title"].y + max(0, (sub["title"].height - label.get_height()) // 2),
+                sub["empty"].centerx - label.get_width() // 2,
+                sub["empty"].y,
             )
             screen.blit(label, label_pos)
             return
@@ -506,16 +508,16 @@ class MeleeMenuRenderer:
         if ctx["kind"] == "team_name":
             label = self._preview_title_font.render("TEAM NAME", True, (230, 240, 255))
             label_pos = (
-                sub["title"].x,
-                sub["title"].y + max(0, (sub["title"].height - label.get_height()) // 2),
+                sub["title"].centerx - label.get_width() // 2,
+                sub["title"].y,
             )
             screen.blit(label, label_pos)
             team = ctx.get("team", "Team 1")
             team_name = menu.team_names.get(team, team.upper())
             team_text = self._preview_font.render(team_name, True, (200, 220, 255))
             team_pos = (
-                sub["icon"].x,
-                sub["icon"].y + max(0, (sub["icon"].height - team_text.get_height()) // 2),
+                sub["team"].centerx - team_text.get_width() // 2,
+                sub["team"].y,
             )
             screen.blit(team_text, team_pos)
 
