@@ -39,15 +39,15 @@ METER_CUBE_SIZE = 4
 METER_CUBE_GAP = 1
 METER_MAX_UNITS = 42
 CARD_TITLE_RECT = pygame.Rect(8, 7, 80, 16)
-CARD_ICON_RECT = pygame.Rect(18, 20, 60, 58)
+CARD_ICON_RECT = pygame.Rect(16, 18, 64, 62)
 CARD_CREW_METER_RECT = pygame.Rect(8, 30, 9, 84)
 CARD_BATT_METER_RECT = pygame.Rect(79, 30, 9, 84)
-CARD_CREW_LABEL_RECT = pygame.Rect(5, 102, 28, 10)
+CARD_CREW_LABEL_RECT = pygame.Rect(2, 108, 28, 10)
 CARD_CREW_VALUE_RECT = pygame.Rect(6, 113, 20, 10)
-CARD_BATT_LABEL_RECT = pygame.Rect(63, 102, 28, 10)
+CARD_BATT_LABEL_RECT = pygame.Rect(66, 108, 28, 10)
 CARD_BATT_VALUE_RECT = pygame.Rect(71, 113, 20, 10)
 CARD_COST_LABEL_RECT = pygame.Rect(34, 104, 28, 10)
-CARD_COST_VALUE_RECT = pygame.Rect(34, 115, 28, 10)
+CARD_COST_VALUE_RECT = pygame.Rect(35, 111, 26, 12)
 CARD_EMPTY_RECT = pygame.Rect(12, 58, 72, 16)
 CARD_TEAM_RECT = pygame.Rect(16, 58, 64, 16)
 
@@ -356,6 +356,9 @@ class MeleeMenuRenderer:
 
     # [2026-03-20] Причина: CREW/BATT meters должны использовать фиксированный размер cube-блока; stat влияет только на число блоков.
     def _draw_vertical_meter(self, screen, rect, value, max_value, active_color, inactive_color):
+        pygame.draw.rect(screen, (0, 0, 0), rect)
+        pygame.draw.rect(screen, (70, 70, 70), rect, 1)
+
         units = max(0, int(value or 0))
         if units <= 0:
             return
