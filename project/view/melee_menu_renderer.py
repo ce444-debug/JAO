@@ -39,7 +39,7 @@ METER_CUBE_SIZE = 4
 METER_CUBE_GAP = 1
 METER_MAX_UNITS = 42
 CARD_TITLE_RECT = pygame.Rect(8, 6, 80, 14)
-CARD_ICON_RECT = pygame.Rect(18, 20, 60, 54)
+CARD_ICON_RECT = pygame.Rect(16, 24, 64, 60)
 CARD_CREW_METER_RECT = pygame.Rect(8, 30, 9, 84)
 CARD_BATT_METER_RECT = pygame.Rect(79, 30, 9, 84)
 CARD_CREW_LABEL_RECT = pygame.Rect(2, 108, 28, 10)
@@ -47,7 +47,7 @@ CARD_CREW_VALUE_RECT = pygame.Rect(6, 113, 20, 10)
 CARD_BATT_LABEL_RECT = pygame.Rect(66, 108, 28, 10)
 CARD_BATT_VALUE_RECT = pygame.Rect(71, 113, 20, 10)
 CARD_COST_LABEL_RECT = pygame.Rect(34, 104, 28, 10)
-CARD_COST_VALUE_RECT = pygame.Rect(35, 104, 26, 12)
+CARD_COST_VALUE_RECT = pygame.Rect(35, 98, 26, 12)
 CARD_EMPTY_RECT = pygame.Rect(12, 58, 72, 16)
 CARD_TEAM_RECT = pygame.Rect(16, 58, 64, 16)
 
