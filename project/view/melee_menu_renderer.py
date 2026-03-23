@@ -38,8 +38,8 @@ METER_SEGMENTS = 10
 METER_CUBE_SIZE = 4
 METER_CUBE_GAP = 1
 METER_MAX_UNITS = 42
-CARD_TITLE_RECT = pygame.Rect(8, 7, 80, 16)
-CARD_ICON_RECT = pygame.Rect(16, 18, 64, 62)
+CARD_TITLE_RECT = pygame.Rect(8, 6, 80, 14)
+CARD_ICON_RECT = pygame.Rect(18, 20, 60, 54)
 CARD_CREW_METER_RECT = pygame.Rect(8, 30, 9, 84)
 CARD_BATT_METER_RECT = pygame.Rect(79, 30, 9, 84)
 CARD_CREW_LABEL_RECT = pygame.Rect(2, 108, 28, 10)
@@ -47,7 +47,7 @@ CARD_CREW_VALUE_RECT = pygame.Rect(6, 113, 20, 10)
 CARD_BATT_LABEL_RECT = pygame.Rect(66, 108, 28, 10)
 CARD_BATT_VALUE_RECT = pygame.Rect(71, 113, 20, 10)
 CARD_COST_LABEL_RECT = pygame.Rect(34, 104, 28, 10)
-CARD_COST_VALUE_RECT = pygame.Rect(35, 111, 26, 12)
+CARD_COST_VALUE_RECT = pygame.Rect(35, 104, 26, 12)
 CARD_EMPTY_RECT = pygame.Rect(12, 58, 72, 16)
 CARD_TEAM_RECT = pygame.Rect(16, 58, 64, 16)
 
@@ -356,9 +356,6 @@ class MeleeMenuRenderer:
 
     # [2026-03-20] Причина: CREW/BATT meters должны использовать фиксированный размер cube-блока; stat влияет только на число блоков.
     def _draw_vertical_meter(self, screen, rect, value, max_value, active_color, inactive_color):
-        pygame.draw.rect(screen, (0, 0, 0), rect)
-        pygame.draw.rect(screen, (70, 70, 70), rect, 1)
-
         units = max(0, int(value or 0))
         if units <= 0:
             return
@@ -372,6 +369,16 @@ class MeleeMenuRenderer:
         content_h = rows * block_size + gap * (rows - 1)
         start_x = rect.x + max(0, (rect.width - content_w) // 2)
         start_y = rect.bottom - content_h
+
+        bg_pad = 1
+        bg_rect = pygame.Rect(
+            start_x - bg_pad,
+            start_y - bg_pad,
+            content_w + bg_pad * 2,
+            content_h + bg_pad * 2,
+        )
+        pygame.draw.rect(screen, (0, 0, 0), bg_rect)
+        pygame.draw.rect(screen, (70, 70, 70), bg_rect, 1)
 
         edge_color = tuple(max(0, c - 60) for c in active_color)
         highlight_color = tuple(min(255, c + 35) for c in active_color)
@@ -454,8 +461,8 @@ class MeleeMenuRenderer:
 
             ship_icon = self._get_scaled_ship_icon(
                 ship_name,
-                max(8, icon_rect.width + 10),
-                max(8, icon_rect.height + 10),
+                max(8, icon_rect.width),
+                max(8, icon_rect.height),
             )
             if ship_icon is not None:
                 icon_pos = (
