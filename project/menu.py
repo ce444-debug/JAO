@@ -80,6 +80,7 @@ class SuperMeleeMenu:
         self.selected_ship_index = 0
         self.editing_team = False
         self.editing_team_name = ""
+        self.editing_original_team_name = ""
         self.initial_ships = {"Team 1": None, "Team 2": None}
         self.initial_slots = {'Team 1': None, 'Team 2': None}  # [25-05-2025]
 
@@ -126,6 +127,46 @@ class SuperMeleeMenu:
             return 0
         return slot + LEFT_PANEL_COLS if slot < LEFT_PANEL_COLS else slot - LEFT_PANEL_COLS
 
+    def get_team_display_name(self, team):
+        name = self.team_names.get(team, "")
+        if isinstance(name, str) and name.strip():
+            return name
+        return team.upper()
+
+    def is_team_header_selected(self, team):
+        return self.selected_right == -1 and self.selected_team == team and self.selected_slot == -1
+
+    def start_team_name_editing(self):
+        if not self.is_team_header_selected(self.selected_team):
+            return
+        current_name = self.team_names.get(self.selected_team, "")
+        self.editing_team = True
+        self.editing_original_team_name = current_name
+        self.editing_team_name = current_name
+
+    def confirm_team_name_editing(self):
+        new_name = self.editing_team_name
+        self.team_names[self.selected_team] = new_name if new_name.strip() else ""
+        self.editing_team = False
+        self.editing_original_team_name = ""
+        self.editing_team_name = ""
+
+    def cancel_team_name_editing(self):
+        self.team_names[self.selected_team] = self.editing_original_team_name
+        self.editing_team = False
+        self.editing_original_team_name = ""
+        self.editing_team_name = ""
+
+    def handle_team_name_edit_event(self, ev):
+        if ev.key == pygame.K_RETURN:
+            self.confirm_team_name_editing()
+        elif ev.key == pygame.K_ESCAPE:
+            self.cancel_team_name_editing()
+        elif ev.key == pygame.K_BACKSPACE:
+            self.editing_team_name = self.editing_team_name[:-1]
+        elif ev.unicode and ev.unicode.isprintable():
+            self.editing_team_name += ev.unicode
+
     def display(self):
         self.reset()
         while True:
@@ -168,15 +209,24 @@ class SuperMeleeMenu:
         self.draw_right_panel(right_rect)
 
     def draw_team_panel(self, team, area):
-        name = self.team_names[team]
-        if self.selected_right == -1 and self.selected_team == team and self.selected_slot == -1 and self.editing_team:
-            surf = self.font_menu.render(self.editing_team_name, True, YELLOW)
+        is_selected_header = self.is_team_header_selected(team)
+        is_editing_header = is_selected_header and self.editing_team
+        display_name = self.get_team_display_name(team)
+        text_color = YELLOW if is_editing_header else WHITE
+
+        if is_editing_header:
+            cursor = "_" if (pygame.time.get_ticks() // 400) % 2 == 0 else " "
+            render_text = f"{self.editing_team_name}{cursor}"
         else:
-            surf = self.font_menu.render(name, True, WHITE)
+            render_text = display_name
+
+        surf = self.font_menu.render(render_text, True, text_color)
         self.screen.blit(surf, (area.x + 10, area.y + 10))
-        if self.selected_right == -1 and self.selected_team == team and self.selected_slot == -1:
-            pygame.draw.rect(self.screen, YELLOW,
-                             (area.x + 8, area.y + 8, surf.get_width() + 4, surf.get_height() + 4), 1)
+        if is_selected_header:
+            border_color = GREEN if is_editing_header else YELLOW
+            border_width = 2 if is_editing_header else 1
+            pygame.draw.rect(self.screen, border_color,
+                             (area.x + 8, area.y + 8, surf.get_width() + 10, surf.get_height() + 8), border_width)
         slot_m = 5
         cols = LEFT_PANEL_COLS
         slot_w = (area.width - 20 - (cols - 1) * slot_m) // cols
@@ -258,14 +308,8 @@ class SuperMeleeMenu:
                 sys.exit()
             elif ev.type == pygame.KEYDOWN:
                 if self.editing_team:
-                    if ev.key == pygame.K_RETURN:
-                        self.team_names[self.selected_team] = self.editing_team_name
-                        self.editing_team = False
-                    elif ev.key == pygame.K_BACKSPACE:
-                        self.editing_team_name = self.editing_team_name[:-1]
-                    else:
-                        self.editing_team_name += ev.unicode
-                    return
+                    self.handle_team_name_edit_event(ev)
+                    continue
                 if self.selected_right == -1:
                     if ev.key == pygame.K_UP:
                         if self.selected_slot == -1:
@@ -301,8 +345,7 @@ class SuperMeleeMenu:
                                 self.selected_right = 3
                     elif ev.key == pygame.K_RETURN:
                         if self.selected_slot == -1:
-                            self.editing_team = True
-                            self.editing_team_name = self.team_names[self.selected_team]
+                            self.start_team_name_editing()
                         else:
                             self.state = "ship_select"
                             self.selected_ship_index = 0
