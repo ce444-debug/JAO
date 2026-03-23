@@ -1,0 +1,17 @@
+﻿# [2026-03-23] Причина: исключаем локальные файлы PyCharm, Python cache и виртуальное окружение из Git.
+
+# --- PyCharm / IntelliJ ---
+.idea/workspace.xml
+.idea/shelf/
+*.iml
+
+# --- Python cache ---
+__pycache__/
+*.pyc
+
+# --- Virtual environment ---
+.venv/
+
+# --- Optional OS junk ---
+Thumbs.db
+.DS_Store
