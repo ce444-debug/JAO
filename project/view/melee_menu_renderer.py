@@ -66,6 +66,12 @@ SHIP_ICON_FILES = {
     "YEHAT TERMINATOR": os.path.join("assets", "ui", "icons", "melee", "terminator-icons-001.png"),
 }
 
+ICON_SCALE_OVERRIDES = {
+    "EARTHLING CRUISER": 1.08,
+    "KOHR-AH MARAUDER": 0.94,
+    "YEHAT TERMINATOR": 1.12,
+}
+
 
 class MeleeMenuRenderer:
     def __init__(self):
@@ -206,8 +212,9 @@ class MeleeMenuRenderer:
             return None
 
         scale = min(target_w / src_w, target_h / src_h)
-        scaled_w = max(1, int(src_w * scale))
-        scaled_h = max(1, int(src_h * scale))
+        scale *= ICON_SCALE_OVERRIDES.get(key, 1.0)
+        scaled_w = max(1, min(target_w, int(src_w * scale)))
+        scaled_h = max(1, min(target_h, int(src_h * scale)))
         scaled = pygame.transform.smoothscale(source, (scaled_w, scaled_h))
         self._ship_icon_scaled_cache[cache_key] = scaled
         return scaled
