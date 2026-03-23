@@ -451,13 +451,11 @@ class MeleeMenuRenderer:
             screen.blit(title_surface, title_pos)
 
             icon_rect = sub["icon"]
-            pygame.draw.rect(screen, (16, 36, 78), icon_rect)
-            pygame.draw.rect(screen, (70, 130, 200), icon_rect, 1)
 
             ship_icon = self._get_scaled_ship_icon(
                 ship_name,
-                max(8, icon_rect.width - 4),
-                max(8, icon_rect.height - 4),
+                max(8, icon_rect.width + 10),
+                max(8, icon_rect.height + 10),
             )
             if ship_icon is not None:
                 icon_pos = (
@@ -474,27 +472,17 @@ class MeleeMenuRenderer:
             max_batt = stats["max_batt"] if stats else 0
             cost = stats["cost"] if stats else 0
 
-            cost_lbl = self._preview_font.render("COST", True, (220, 230, 255))
             cost_txt = self._preview_font.render(str(cost), True, (220, 230, 255))
-            cost_lbl_pos = (
-                sub["cost_label"].centerx - cost_lbl.get_width() // 2,
-                sub["cost_label"].y,
-            )
             cost_pos = (
                 sub["cost_value"].centerx - cost_txt.get_width() // 2,
                 sub["cost_value"].y,
             )
-            screen.blit(cost_lbl, cost_lbl_pos)
             screen.blit(cost_txt, cost_pos)
 
             crew_lbl = self._preview_font.render("CREW", True, (190, 245, 190))
-            crew_val = self._preview_font.render(str(crew), True, (190, 245, 190))
             batt_lbl = self._preview_font.render("BATT", True, (255, 190, 190))
-            batt_val = self._preview_font.render(str(batt), True, (255, 190, 190))
             screen.blit(crew_lbl, (sub["crew_label"].x, sub["crew_label"].y))
-            screen.blit(crew_val, (sub["crew_value"].x, sub["crew_value"].y))
             screen.blit(batt_lbl, (sub["batt_label"].x, sub["batt_label"].y))
-            screen.blit(batt_val, (sub["batt_value"].right - batt_val.get_width(), sub["batt_value"].y))
 
             self._draw_vertical_meter(screen, sub["crew_meter"], crew, max_crew, (70, 220, 70), (22, 55, 22))
             self._draw_vertical_meter(screen, sub["batt_meter"], batt, max_batt, (220, 70, 70), (55, 22, 22))
