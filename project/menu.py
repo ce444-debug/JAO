@@ -130,8 +130,8 @@ class SuperMeleeMenu:
         self.reset()
         while True:
             if self.state == "main_menu":
-                # [2026-02-03] main_menu теперь рисуется через renderer, если он доступен.
-                # Причина: перенос отрисовки из menu.py в view/ без ломки логики.
+                # [2026-02-03] CHANGE: main menu рендерится только через renderer как view-слой.
+                # Причина: убрать frame-based switching и оставить чистую sprite-layout отрисовку.
                 if self.renderer is not None:
                     self.renderer.draw_main_menu(self)
                 else:
@@ -150,93 +150,19 @@ class SuperMeleeMenu:
             self.clock.tick(30)
 
     def draw_main_menu(self):
-        self.screen.fill(BLACK)
-        left_rect = pygame.Rect(0, 0, GAME_SCREEN_W, SCREEN_H)
-        pygame.draw.rect(self.screen, (30, 30, 30), left_rect)
-        self.screen.blit(self.font_title.render("Super Melee", True, YELLOW), (20, 10))
-
-        h_half = (SCREEN_H - 100) // 2 - 10
-        panel1 = pygame.Rect(10, 80, GAME_SCREEN_W - 20, h_half)
-        panel2 = pygame.Rect(10, panel1.bottom + 20, GAME_SCREEN_W - 20, h_half)
-        pygame.draw.rect(self.screen, (50, 50, 50), panel1, 2)
-        pygame.draw.rect(self.screen, (50, 50, 50), panel2, 2)
-        self.draw_team_panel("Team 1", panel1)
-        self.draw_team_panel("Team 2", panel2)
-
-        right_rect = pygame.Rect(GAME_SCREEN_W, 0, PANEL_WIDTH, SCREEN_H)
-        pygame.draw.rect(self.screen, (40, 40, 40), right_rect)
-        self.draw_right_panel(right_rect)
+        # [2026-02-03] CHANGE: legacy main menu draw отключён.
+        # Причина: основной экран меню полностью рисуется через UQM renderer.
+        pass
 
     def draw_team_panel(self, team, area):
-        name = self.team_names[team]
-        if self.selected_right == -1 and self.selected_team == team and self.selected_slot == -1 and self.editing_team:
-            surf = self.font_menu.render(self.editing_team_name, True, YELLOW)
-        else:
-            surf = self.font_menu.render(name, True, WHITE)
-        self.screen.blit(surf, (area.x + 10, area.y + 10))
-        if self.selected_right == -1 and self.selected_team == team and self.selected_slot == -1:
-            pygame.draw.rect(self.screen, YELLOW,
-                             (area.x + 8, area.y + 8, surf.get_width() + 4, surf.get_height() + 4), 1)
-        slot_m = 5
-        cols = LEFT_PANEL_COLS
-        slot_w = (area.width - 20 - (cols - 1) * slot_m) // cols
-        slot_h = 40
-        start_y = area.y + 60
-        points = 0
-        for i in range(self.team_slots):
-            row = i // cols
-            col = i % cols
-            r = pygame.Rect(area.x + 10 + col * (slot_w + slot_m),
-                            start_y + row * (slot_h + slot_m), slot_w, slot_h)
-            pygame.draw.rect(self.screen, GRAY, r, 1)
-            txt = self.teams[team][i] if self.teams[team][i] else "---"
-            if self.selected_right == -1 and self.selected_team == team and self.selected_slot == i:
-                pygame.draw.rect(self.screen, YELLOW, r, 2)
-            self.screen.blit(self.font_small.render(txt, True, WHITE), (r.x + 5, r.y + 10))
-            if txt != "---" and txt in SHIP_CLASSES:
-                try:
-                    dummy = SHIP_CLASSES[txt](0, 0, WHITE)
-                    points += getattr(dummy, "cost", 0)
-                except:
-                    pass
-        self.screen.blit(self.font_small.render(f"Points: {points}", True, WHITE),
-                         (area.x + 10, area.bottom - 30))
+        # [2026-02-03] CHANGE: legacy team panel drawing disabled for renderer-only main menu.
+        # Причина: убрать legacy UI отрисовку из главного экрана.
+        pass
 
     def draw_right_panel(self, area):
-        pygame.draw.rect(self.screen, (40, 40, 40), area)
-        y = 50
-        margin = 10
-        for idx, (opt_text, action, team) in enumerate(self.right_options):
-            if action == "battle":
-                h = 80
-            elif action == "control":
-                h = 60
-            elif action == "save" or action == "load":
-                h = 30
-            else:  # quit
-                h = 40
-            font = self.font_menu if action == "control" else self.font_small
-            if idx == 3 and self.selected_right == -1:
-                if self.selected_slot >= 0:
-                    ship = self.teams[self.selected_team][self.selected_slot]
-                    txt = ship if ship else "Empty slot"
-                else:
-                    txt = "Battle!"
-            elif action == "control" and team:
-                txt = self.settings[team]["control"]
-            else:
-                txt = opt_text
-            if action == "quit":
-                y += 20
-            border_color = YELLOW if idx == self.selected_right else GRAY
-            border_width = 2 if idx == self.selected_right else 1
-            r = pygame.Rect(area.x + margin, y, area.width - 2 * margin, h)
-            pygame.draw.rect(self.screen, border_color, r, border_width)
-            surf = font.render(txt, True, WHITE)
-            text_x = r.x + (r.width - surf.get_width()) // 2
-            text_y = r.y + (r.height - surf.get_height()) // 2
-            self.screen.blit(surf, (text_x, text_y))
-            y += h + margin
+        # [2026-02-03] CHANGE: legacy right panel drawing disabled for renderer-only main menu.
+        # Причина: убрать legacy UI отрисовку из главного экрана.
+        pass
 
     def draw_ship_select(self):
         self.screen.fill((20, 20, 60))
