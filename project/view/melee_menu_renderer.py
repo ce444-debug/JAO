@@ -705,7 +705,7 @@ class MeleeMenuRenderer:
             ),
         )
 
-        if selected == 4:
+        if selected == 5:
             save_t2_frame = 20
         else:
             save_t2_frame = 18
@@ -727,7 +727,7 @@ class MeleeMenuRenderer:
             ),
         )
 
-        if selected == 5:
+        if selected == 4:
             load_t2_frame = 19
         else:
             load_t2_frame = 17
