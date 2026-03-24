@@ -716,28 +716,6 @@ class MeleeMenuRenderer:
         )
 
         if selected == 4:
-            save_t2_frame = 20
-        else:
-            save_t2_frame = 18
-        save_t2_x = int(SAVE_T2_POS[0] * scale_x)
-        save_t2_y = int(SAVE_T2_POS[1] * scale_y)
-        save_t2_img = self.ui_sprites[save_t2_frame]
-        save_t2_scaled = pygame.transform.scale(
-            save_t2_img,
-            (
-                int(save_t2_img.get_width() * scale_x),
-                int(save_t2_img.get_height() * scale_y),
-            ),
-        )
-        screen.blit(
-            save_t2_scaled,
-            (
-                save_t2_x - save_t2_scaled.get_width() // 2,
-                save_t2_y - save_t2_scaled.get_height() // 2,
-            ),
-        )
-
-        if selected == 5:
             load_t2_frame = 19
         else:
             load_t2_frame = 17
@@ -756,6 +734,28 @@ class MeleeMenuRenderer:
             (
                 load_t2_x - load_t2_scaled.get_width() // 2,
                 load_t2_y - load_t2_scaled.get_height() // 2,
+            ),
+        )
+
+        if selected == 5:
+            save_t2_frame = 20
+        else:
+            save_t2_frame = 18
+        save_t2_x = int(SAVE_T2_POS[0] * scale_x)
+        save_t2_y = int(SAVE_T2_POS[1] * scale_y)
+        save_t2_img = self.ui_sprites[save_t2_frame]
+        save_t2_scaled = pygame.transform.scale(
+            save_t2_img,
+            (
+                int(save_t2_img.get_width() * scale_x),
+                int(save_t2_img.get_height() * scale_y),
+            ),
+        )
+        screen.blit(
+            save_t2_scaled,
+            (
+                save_t2_x - save_t2_scaled.get_width() // 2,
+                save_t2_y - save_t2_scaled.get_height() // 2,
             ),
         )
 

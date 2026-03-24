@@ -70,8 +70,8 @@ class SuperMeleeMenu:
             ("Save", "save", "Team 1"),
             ("Load", "load", "Team 1"),
             ("Battle!", "battle", None),
-            ("Save", "save", "Team 2"),
             ("Load", "load", "Team 2"),
+            ("Save", "save", "Team 2"),
             ("Team 2 Control", "control", "Team 2"),
             ("Quit", "quit", None)
         ]
