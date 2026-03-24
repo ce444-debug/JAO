@@ -28,6 +28,7 @@ BLACK = (0, 0, 0)
 SAVES_FILE = "saved_teams.json"
 CONTROL_OPTIONS = ["Human Control", "Weak Cyborg", "Good Cyborg", "Awesome Cyborg"]
 LEFT_PANEL_COLS = 7
+TEAM_NAME_MAX_LEN = 14
 
 # In-memory cache for last menu state
 _CACHED_CONFIG = None
@@ -80,6 +81,7 @@ class SuperMeleeMenu:
         self.selected_ship_index = 0
         self.editing_team = False
         self.editing_team_name = ""
+        self.editing_team_original_name = ""
         self.initial_ships = {"Team 1": None, "Team 2": None}
         self.initial_slots = {'Team 1': None, 'Team 2': None}  # [25-05-2025]
 
@@ -186,10 +188,19 @@ class SuperMeleeMenu:
                 if self.editing_team:
                     if ev.key == pygame.K_RETURN:
                         self.team_names[self.selected_team] = self.editing_team_name
+                        self.editing_team_original_name = ""
+                        self.editing_team = False
+                    elif ev.key == pygame.K_ESCAPE:
+                        self.editing_team_name = self.editing_team_original_name
+                        self.editing_team_original_name = ""
                         self.editing_team = False
                     elif ev.key == pygame.K_BACKSPACE:
                         self.editing_team_name = self.editing_team_name[:-1]
-                    else:
+                    elif (
+                        ev.unicode
+                        and ev.unicode.isprintable()
+                        and len(self.editing_team_name) < TEAM_NAME_MAX_LEN
+                    ):
                         self.editing_team_name += ev.unicode
                     return
                 if self.selected_right == -1:
@@ -228,6 +239,7 @@ class SuperMeleeMenu:
                     elif ev.key == pygame.K_RETURN:
                         if self.selected_slot == -1:
                             self.editing_team = True
+                            self.editing_team_original_name = self.team_names[self.selected_team]
                             self.editing_team_name = self.team_names[self.selected_team]
                         else:
                             self.state = "ship_select"
