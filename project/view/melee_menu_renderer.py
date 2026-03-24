@@ -143,15 +143,25 @@ class MeleeMenuRenderer:
     # [2026-03-17] Причина: контекстная подсветка поля имени команды при выборе заголовка команды.
     def _draw_team_name(self, menu, screen, team_name, base_rect, scale_x, scale_y):
         rect = self._scale_rect(base_rect, scale_x, scale_y)
-        name_value = menu.team_names.get(team_name, "")
-        if not name_value:
-            name_value = "TEAM 1" if team_name == "Team 1" else "TEAM 2"
+        raw_name_value = menu.team_names.get(team_name, "")
+        fallback_name = "TEAM 1" if team_name == "Team 1" else "TEAM 2"
 
         selected_header = (
             getattr(menu, "selected_right", -1) == -1
             and getattr(menu, "selected_team", "") == team_name
             and getattr(menu, "selected_slot", -1) == -1
         )
+
+        editing_active = (
+            getattr(menu, "editing_team", False)
+            and getattr(menu, "selected_team", "") == team_name
+            and selected_header
+        )
+
+        if editing_active:
+            name_value = f"{getattr(menu, 'editing_team_name', '')}_"
+        else:
+            name_value = raw_name_value if str(raw_name_value).strip() else fallback_name
 
         bg_col = (20, 40, 84) if selected_header else (8, 20, 52)
         br_col = (130, 200, 255) if selected_header else (50, 90, 160)
