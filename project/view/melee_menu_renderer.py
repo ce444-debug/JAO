@@ -21,6 +21,7 @@ LOAD_T1_POS = (288, 71)
 SAVE_T2_POS = (288, 159)
 LOAD_T2_POS = (288, 149)
 BATTLE_POS = (288, 110)
+QUIT_POS = (288, 219)
 
 # [2026-03-16] Причина: базовая геометрия двух сеток флота (320x240) для procedural-отрисовки слотов.
 TEAM1_GRID_RECT = pygame.Rect(8, 58, 206, 82)
@@ -77,7 +78,7 @@ class MeleeMenuRenderer:
     def __init__(self):
         # [2026-02-03] reason: load UQM control sprites 000..008 into dictionary for direct frame access.
         self.ui_sprites = {}
-        for frame in [0, 1, 2, 3, 4, 5, 6, 7, 8, 17, 18, 19, 20, 25, 26]:
+        for frame in [0, 1, 2, 3, 4, 5, 6, 7, 8, 17, 18, 19, 20, 25, 26, 29, 30]:
             self.ui_sprites[frame] = self._load_frame(frame)
         # [2026-02-03] reason: diagnostic click-capture flow for automatic button anchor picking.
         self._anchor_targets = [
@@ -704,7 +705,7 @@ class MeleeMenuRenderer:
             ),
         )
 
-        if selected == 4:
+        if selected == 5:
             save_t2_frame = 20
         else:
             save_t2_frame = 18
@@ -726,7 +727,7 @@ class MeleeMenuRenderer:
             ),
         )
 
-        if selected == 5:
+        if selected == 4:
             load_t2_frame = 19
         else:
             load_t2_frame = 17
@@ -777,3 +778,25 @@ class MeleeMenuRenderer:
             # [2026-03-19] Причина: preview/empty/team modes должны переключать содержимое panel, а не наслаиваться на BATTLE!-состояние.
             self._draw_context_panel_background(screen, battle_rect)
             self._draw_battle_area_content(menu, screen, battle_rect, panel_mode)
+
+        if selected == 7:
+            quit_frame = 30
+        else:
+            quit_frame = 29
+        quit_x = int(QUIT_POS[0] * scale_x)
+        quit_y = int(QUIT_POS[1] * scale_y)
+        quit_img = self.ui_sprites[quit_frame]
+        quit_scaled = pygame.transform.scale(
+            quit_img,
+            (
+                int(quit_img.get_width() * scale_x),
+                int(quit_img.get_height() * scale_y),
+            ),
+        )
+        screen.blit(
+            quit_scaled,
+            (
+                quit_x - quit_scaled.get_width() // 2,
+                quit_y - quit_scaled.get_height() // 2,
+            ),
+        )

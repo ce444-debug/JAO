@@ -69,8 +69,8 @@ class SuperMeleeMenu:
             ("Save", "save", "Team 1"),
             ("Load", "load", "Team 1"),
             ("Battle!", "battle", None),
-            ("Save", "save", "Team 2"),
             ("Load", "load", "Team 2"),
+            ("Save", "save", "Team 2"),
             ("Team 2 Control", "control", "Team 2"),
             ("Quit", "quit", None)
         ]
@@ -476,6 +476,13 @@ class SuperMeleeMenu:
             profiles = []
         if not profiles:
             return None
+
+        # [2026-03-24] Причина: Enter, которым открыли Load из main_menu, не должен мгновенно подтверждать первый профиль.
+        pending_keydowns = pygame.event.get(pygame.KEYDOWN)
+        for ev in pending_keydowns:
+            if ev.key != pygame.K_RETURN:
+                pygame.event.post(ev)
+
         idx = 0
         choosing = True
         while choosing:
@@ -490,12 +497,13 @@ class SuperMeleeMenu:
                     self.save_last_config()
                     pygame.quit()
                     sys.exit()
-                elif ev.type == pygame.K_UP:
-                    idx = max(0, idx - 1)
-                elif ev.key == pygame.K_DOWN:
-                    idx = min(len(profiles) - 1, idx + 1)
-                elif ev.key == pygame.K_RETURN:
-                    choosing = False
+                elif ev.type == pygame.KEYDOWN:
+                    if ev.key == pygame.K_UP:
+                        idx = max(0, idx - 1)
+                    elif ev.key == pygame.K_DOWN:
+                        idx = min(len(profiles) - 1, idx + 1)
+                    elif ev.key == pygame.K_RETURN:
+                        choosing = False
             self.clock.tick(30)
         return profiles[idx]
 
