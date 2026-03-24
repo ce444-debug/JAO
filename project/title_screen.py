@@ -40,6 +40,9 @@ class TitleScreen:
 
         # Шрифт
         self.font = pygame.font.SysFont("arial", 28)
+        # [2026-02-03] CHANGE: шрифт версии для экрана "Press any key".
+        # Причина: показать метку активности renderer на первом экране.
+        self.version_font = pygame.font.SysFont("arial", 20)
 
         self.blink_timer = 0.0
         self.blink_period = 1.0
@@ -101,6 +104,12 @@ class TitleScreen:
 
         # 2. Постер целиком (contain)
         surface.blit(self.poster_surface, self.poster_rect)
+
+        # [2026-02-03] CHANGE: версия renderer в левом нижнем углу.
+        # Причина: требуется видимая метка на первом экране.
+        version_text = "UQM MENU v0.1 (renderer active)"
+        version_surface = self.version_font.render(version_text, True, (255, 255, 0))
+        surface.blit(version_surface, (12, self.screen_height - version_surface.get_height() - 12))
 
         # 3. Текст
         if self.show_press_any_key:
