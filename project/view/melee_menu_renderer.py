@@ -51,8 +51,8 @@ CARD_COST_LABEL_RECT = pygame.Rect(34, 104, 28, 10)
 CARD_COST_VALUE_RECT = pygame.Rect(35, 98, 26, 12)
 CARD_EMPTY_RECT = pygame.Rect(12, 58, 72, 16)
 CARD_TEAM_RECT = pygame.Rect(16, 58, 64, 16)
-# [2026-03-28] Причина: внутренний usable-rect ship popup (meleemenu-027) для размещения grid иконок без перерисовки встроенных label-график.
-SHIP_OVERLAY_GRID_RECT = pygame.Rect(18, 10, 92, 78)
+# [2026-03-28] Причина: точная геометрия видимой матрицы grid в meleemenu-027 (5x5, шаг 18px, origin 19x4 в базовом 128x98).
+SHIP_OVERLAY_GRID_RECT = pygame.Rect(19, 4, 90, 90)
 
 # [2026-02-03] reason: control option order must match menu logic values.
 CONTROL_OPTIONS = [
@@ -562,7 +562,7 @@ class MeleeMenuRenderer:
     def _draw_ship_overlay(self, menu, screen):
         ships = getattr(menu, "ship_overlay_ships", [])
 
-        cols = max(1, int(getattr(menu, "ship_overlay_cols", 4)))
+        cols = max(1, int(getattr(menu, "ship_overlay_cols", 5)))
         # [2026-03-28] Причина: popup ship picker должен использовать fixed row/col matrix с видимыми empty cells.
         rows = max(1, int(getattr(menu, "ship_overlay_rows", 5)))
         total_cells = cols * rows
@@ -589,25 +589,25 @@ class MeleeMenuRenderer:
         popup_scaled = pygame.transform.scale(popup_img, (popup_w, popup_h))
         screen.blit(popup_scaled, popup.topleft)
 
-        content = pygame.Rect(
-            popup.x + int((SHIP_OVERLAY_GRID_RECT.x / popup_img.get_width()) * popup.width),
-            popup.y + int((SHIP_OVERLAY_GRID_RECT.y / popup_img.get_height()) * popup.height),
-            max(8, int((SHIP_OVERLAY_GRID_RECT.width / popup_img.get_width()) * popup.width)),
-            max(8, int((SHIP_OVERLAY_GRID_RECT.height / popup_img.get_height()) * popup.height)),
-        )
-
-        gap = max(3, min(content.width // 48, content.height // 36))
-        cell_w = max(18, (content.width - gap * (cols - 1)) // cols)
-        cell_h = max(18, (content.height - gap * (rows - 1)) // rows)
+        # [2026-03-28] Причина: ячейки должны точно совпасть с пиксельной сеткой popup asset, поэтому строим их из local-пикселей 027 и масштабируем в screen-space.
+        grid_local_x = SHIP_OVERLAY_GRID_RECT.x
+        grid_local_y = SHIP_OVERLAY_GRID_RECT.y
+        cell_local_w = SHIP_OVERLAY_GRID_RECT.width / cols
+        cell_local_h = SHIP_OVERLAY_GRID_RECT.height / rows
 
         for idx in range(total_cells):
             r = idx // cols
             c = idx % cols
+            local_x1 = grid_local_x + c * cell_local_w
+            local_y1 = grid_local_y + r * cell_local_h
+            local_x2 = local_x1 + cell_local_w
+            local_y2 = local_y1 + cell_local_h
+
             cell = pygame.Rect(
-                content.x + c * (cell_w + gap),
-                content.y + r * (cell_h + gap),
-                cell_w,
-                cell_h,
+                popup.x + int((local_x1 / popup_img.get_width()) * popup.width),
+                popup.y + int((local_y1 / popup_img.get_height()) * popup.height),
+                max(1, int((local_x2 / popup_img.get_width()) * popup.width) - int((local_x1 / popup_img.get_width()) * popup.width)),
+                max(1, int((local_y2 / popup_img.get_height()) * popup.height) - int((local_y1 / popup_img.get_height()) * popup.height)),
             )
             is_selected = idx == selected_idx
             # [2026-03-28] Причина: highlight должен быть cursor-frame поверх встроенной grid-графики popup, без заливки ячейки.

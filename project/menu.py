@@ -85,7 +85,8 @@ class SuperMeleeMenu:
         self.ship_overlay_ships = list(SHIP_CLASSES.keys())
         self.ship_overlay_team = None
         self.ship_overlay_slot = None
-        self.ship_overlay_cols = 4
+        # [2026-03-28] Причина: fixed popup grid meleemenu-027 использует матрицу 5x5 (шаг 18px в базовом 128x98 ассете).
+        self.ship_overlay_cols = 5
         self.ship_overlay_rows = 5
         self.editing_team = False
         self.editing_team_name = ""
