@@ -86,6 +86,7 @@ class SuperMeleeMenu:
         self.ship_overlay_team = None
         self.ship_overlay_slot = None
         self.ship_overlay_cols = 4
+        self.ship_overlay_rows = 5
         self.editing_team = False
         self.editing_team_name = ""
         self.editing_original_team_name = ""
@@ -321,8 +322,9 @@ class SuperMeleeMenu:
             return
 
         cols = max(1, int(self.ship_overlay_cols))
-        total = len(self.ship_overlay_ships)
-        rows = (total + cols - 1) // cols
+        # [2026-03-28] Причина: popup использует фиксированную сетку ячеек; курсор ходит по cell-матрице, включая empty cells.
+        rows = max(1, int(self.ship_overlay_rows))
+        total_cells = cols * rows
         row = self.ship_overlay_index // cols
         col = self.ship_overlay_index % cols
 
@@ -330,25 +332,26 @@ class SuperMeleeMenu:
             if col > 0:
                 self.ship_overlay_index -= 1
         elif ev.key == pygame.K_RIGHT:
-            if self.ship_overlay_index + 1 < total and col < cols - 1:
+            if self.ship_overlay_index + 1 < total_cells and col < cols - 1:
                 self.ship_overlay_index += 1
         elif ev.key == pygame.K_UP:
             if row > 0:
                 self.ship_overlay_index -= cols
         elif ev.key == pygame.K_DOWN:
-            if row < rows - 1 and self.ship_overlay_index + cols < total:
+            if row < rows - 1 and self.ship_overlay_index + cols < total_cells:
                 self.ship_overlay_index += cols
         elif ev.key == pygame.K_RETURN:
             team = self.ship_overlay_team
             slot = self.ship_overlay_slot
+            ships_total = len(self.ship_overlay_ships)
             if (
                 team in self.teams
                 and isinstance(slot, int)
                 and 0 <= slot < self.team_slots
-                and 0 <= self.ship_overlay_index < total
+                and 0 <= self.ship_overlay_index < ships_total
             ):
                 self.teams[team][slot] = self.ship_overlay_ships[self.ship_overlay_index]
-            self.close_ship_overlay()
+                self.close_ship_overlay()
 
     def handle_ship_select_events(self):
         for ev in pygame.event.get():

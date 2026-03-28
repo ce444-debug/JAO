@@ -561,13 +561,12 @@ class MeleeMenuRenderer:
     # [2026-03-28] Причина: ship selection должен отображаться как centered modal overlay поверх main menu.
     def _draw_ship_overlay(self, menu, screen):
         ships = getattr(menu, "ship_overlay_ships", [])
-        if not ships:
-            return
 
         cols = max(1, int(getattr(menu, "ship_overlay_cols", 4)))
-        total = len(ships)
-        rows = (total + cols - 1) // cols
-        selected_idx = max(0, min(getattr(menu, "ship_overlay_index", 0), total - 1))
+        # [2026-03-28] Причина: popup ship picker должен использовать fixed row/col matrix с видимыми empty cells.
+        rows = max(1, int(getattr(menu, "ship_overlay_rows", 5)))
+        total_cells = cols * rows
+        selected_idx = max(0, min(getattr(menu, "ship_overlay_index", 0), total_cells - 1))
 
         popup_img = self.ui_sprites.get(27)
         if popup_img is None or popup_img.get_width() <= 1 or popup_img.get_height() <= 1:
@@ -597,11 +596,11 @@ class MeleeMenuRenderer:
             max(8, int((SHIP_OVERLAY_GRID_RECT.height / popup_img.get_height()) * popup.height)),
         )
 
-        gap = max(6, content.width // 50)
-        cell_w = max(36, (content.width - gap * (cols - 1)) // cols)
-        cell_h = max(28, (content.height - gap * (rows - 1)) // max(1, rows))
+        gap = max(3, min(content.width // 48, content.height // 36))
+        cell_w = max(18, (content.width - gap * (cols - 1)) // cols)
+        cell_h = max(18, (content.height - gap * (rows - 1)) // rows)
 
-        for idx, ship_name in enumerate(ships):
+        for idx in range(total_cells):
             r = idx // cols
             c = idx % cols
             cell = pygame.Rect(
@@ -611,12 +610,18 @@ class MeleeMenuRenderer:
                 cell_h,
             )
             is_selected = idx == selected_idx
-            fill_col = (34, 72, 126) if not is_selected else (70, 130, 210)
-            br_col = (70, 140, 220) if not is_selected else (185, 225, 255)
+            # [2026-03-28] Причина: selection/highlight привязан к cell, а не к фактическому размеру иконки.
+            fill_col = (24, 46, 86) if not is_selected else (56, 102, 176)
+            br_col = (66, 126, 204) if not is_selected else (190, 230, 255)
             pygame.draw.rect(screen, fill_col, cell)
             pygame.draw.rect(screen, br_col, cell, 2 if is_selected else 1)
-
-            self._draw_ship_icon_in_slot(screen, ship_name, cell)
+            if idx < len(ships):
+                ship_name = ships[idx]
+                icon_pad_x = max(2, cell.width // 10)
+                icon_pad_y = max(2, cell.height // 10)
+                icon_rect = cell.inflate(-icon_pad_x * 2, -icon_pad_y * 2)
+                if icon_rect.width > 0 and icon_rect.height > 0:
+                    self._draw_ship_icon_in_slot(screen, ship_name, icon_rect)
 
     def draw_main_menu(self, menu):
         # [2026-02-03] reason: render background full-screen and place controls by scaled 320x240 anchors.
