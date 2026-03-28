@@ -51,6 +51,8 @@ CARD_COST_LABEL_RECT = pygame.Rect(34, 104, 28, 10)
 CARD_COST_VALUE_RECT = pygame.Rect(35, 98, 26, 12)
 CARD_EMPTY_RECT = pygame.Rect(12, 58, 72, 16)
 CARD_TEAM_RECT = pygame.Rect(16, 58, 64, 16)
+# [2026-03-28] Причина: внутренний usable-rect ship popup (meleemenu-027) для размещения grid иконок без перерисовки встроенных label-график.
+SHIP_OVERLAY_GRID_RECT = pygame.Rect(18, 10, 92, 78)
 
 # [2026-02-03] reason: control option order must match menu logic values.
 CONTROL_OPTIONS = [
@@ -78,7 +80,7 @@ class MeleeMenuRenderer:
     def __init__(self):
         # [2026-02-03] reason: load UQM control sprites 000..008 into dictionary for direct frame access.
         self.ui_sprites = {}
-        for frame in [0, 1, 2, 3, 4, 5, 6, 7, 8, 17, 18, 19, 20, 25, 26, 29, 30]:
+        for frame in [0, 1, 2, 3, 4, 5, 6, 7, 8, 17, 18, 19, 20, 25, 26, 27, 29, 30]:
             self.ui_sprites[frame] = self._load_frame(frame)
         # [2026-02-03] reason: diagnostic click-capture flow for automatic button anchor picking.
         self._anchor_targets = [
@@ -567,31 +569,33 @@ class MeleeMenuRenderer:
         rows = (total + cols - 1) // cols
         selected_idx = max(0, min(getattr(menu, "ship_overlay_index", 0), total - 1))
 
+        popup_img = self.ui_sprites.get(27)
+        if popup_img is None or popup_img.get_width() <= 1 or popup_img.get_height() <= 1:
+            return
+
         dim = pygame.Surface((SCREEN_W, SCREEN_H), pygame.SRCALPHA)
         dim.fill((0, 0, 0, 110))
         screen.blit(dim, (0, 0))
 
-        popup_w = min(int(SCREEN_W * 0.68), 440)
-        popup_h = min(int(SCREEN_H * 0.58), 320)
+        scale_x = SCREEN_W / BASE_W
+        scale_y = SCREEN_H / BASE_H
+        popup_w = max(1, int(popup_img.get_width() * scale_x))
+        popup_h = max(1, int(popup_img.get_height() * scale_y))
         popup = pygame.Rect(
             (SCREEN_W - popup_w) // 2,
             (SCREEN_H - popup_h) // 2,
             popup_w,
             popup_h,
         )
-        pygame.draw.rect(screen, (20, 26, 48), popup)
-        pygame.draw.rect(screen, (120, 170, 255), popup, 2)
+        popup_scaled = pygame.transform.scale(popup_img, (popup_w, popup_h))
+        screen.blit(popup_scaled, popup.topleft)
 
-        title = self._preview_title_font.render("SELECT SHIP", True, (220, 235, 255))
-        title_pos = (popup.x + 12, popup.y + 10)
-        screen.blit(title, title_pos)
-
-        hint = self._preview_font.render("Arrows: Move   Enter: Select   Esc: Cancel", True, (180, 205, 235))
-        screen.blit(hint, (popup.x + 12, popup.bottom - hint.get_height() - 10))
-
-        content_top = popup.y + 34
-        content_bottom = popup.bottom - 34
-        content = pygame.Rect(popup.x + 10, content_top, popup.width - 20, max(20, content_bottom - content_top))
+        content = pygame.Rect(
+            popup.x + int((SHIP_OVERLAY_GRID_RECT.x / popup_img.get_width()) * popup.width),
+            popup.y + int((SHIP_OVERLAY_GRID_RECT.y / popup_img.get_height()) * popup.height),
+            max(8, int((SHIP_OVERLAY_GRID_RECT.width / popup_img.get_width()) * popup.width)),
+            max(8, int((SHIP_OVERLAY_GRID_RECT.height / popup_img.get_height()) * popup.height)),
+        )
 
         gap = max(6, content.width // 50)
         cell_w = max(36, (content.width - gap * (cols - 1)) // cols)
