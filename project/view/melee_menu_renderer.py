@@ -610,18 +610,26 @@ class MeleeMenuRenderer:
                 cell_h,
             )
             is_selected = idx == selected_idx
-            # [2026-03-28] Причина: selection/highlight привязан к cell, а не к фактическому размеру иконки.
-            fill_col = (24, 46, 86) if not is_selected else (56, 102, 176)
-            br_col = (66, 126, 204) if not is_selected else (190, 230, 255)
-            pygame.draw.rect(screen, fill_col, cell)
-            pygame.draw.rect(screen, br_col, cell, 2 if is_selected else 1)
+            # [2026-03-28] Причина: highlight должен быть cursor-frame поверх встроенной grid-графики popup, без заливки ячейки.
+            if is_selected:
+                pygame.draw.rect(screen, (235, 245, 255), cell, 2)
+                inner = cell.inflate(-4, -4)
+                if inner.width > 2 and inner.height > 2:
+                    pygame.draw.rect(screen, (90, 160, 245), inner, 1)
             if idx < len(ships):
                 ship_name = ships[idx]
                 icon_pad_x = max(2, cell.width // 10)
                 icon_pad_y = max(2, cell.height // 10)
                 icon_rect = cell.inflate(-icon_pad_x * 2, -icon_pad_y * 2)
                 if icon_rect.width > 0 and icon_rect.height > 0:
-                    self._draw_ship_icon_in_slot(screen, ship_name, icon_rect)
+                    # [2026-03-28] Причина: в popup используем реальные ship icons; fallback-плашки не рисуем, чтобы не подменять стиль ассета.
+                    ship_icon = self._get_scaled_ship_icon(ship_name, icon_rect.width, icon_rect.height)
+                    if ship_icon is not None:
+                        icon_pos = (
+                            icon_rect.centerx - ship_icon.get_width() // 2,
+                            icon_rect.centery - ship_icon.get_height() // 2,
+                        )
+                        screen.blit(ship_icon, icon_pos)
 
     def draw_main_menu(self, menu):
         # [2026-02-03] reason: render background full-screen and place controls by scaled 320x240 anchors.
