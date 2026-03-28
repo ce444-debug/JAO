@@ -79,6 +79,13 @@ class SuperMeleeMenu:
         # Aux variables
         self.ship_list = list(SHIP_CLASSES.keys()) + ["?"]
         self.selected_ship_index = 0
+        # [2026-03-28] Причина: ship selection теперь работает как modal overlay поверх main_menu (без перехода в отдельный fullscreen state).
+        self.ship_overlay_active = False
+        self.ship_overlay_index = 0
+        self.ship_overlay_ships = list(SHIP_CLASSES.keys())
+        self.ship_overlay_team = None
+        self.ship_overlay_slot = None
+        self.ship_overlay_cols = 4
         self.editing_team = False
         self.editing_team_name = ""
         self.editing_original_team_name = ""
@@ -185,6 +192,10 @@ class SuperMeleeMenu:
                 pygame.quit()
                 sys.exit()
             elif ev.type == pygame.KEYDOWN:
+                # [2026-03-28] Причина: при открытом ship overlay весь keyboard input обрабатывается только modal-окном.
+                if self.ship_overlay_active:
+                    self.handle_ship_overlay_event(ev)
+                    return
                 if self.editing_team:
                     if ev.key == pygame.K_RETURN:
                         self.team_names[self.selected_team] = self.editing_team_name
@@ -245,8 +256,8 @@ class SuperMeleeMenu:
                             self.editing_original_team_name = self.team_names[self.selected_team]
                             self.editing_team_name = self.team_names[self.selected_team]
                         else:
-                            self.state = "ship_select"
-                            self.selected_ship_index = 0
+                            # [2026-03-28] Причина: открываем ship picker как modal overlay, без смены FSM state.
+                            self.open_ship_overlay()
                     elif ev.key == pygame.K_DELETE and self.selected_slot >= 0:
                         self.teams[self.selected_team][self.selected_slot] = None
                     elif ev.key == pygame.K_TAB:
@@ -282,6 +293,62 @@ class SuperMeleeMenu:
             self.universal_save(team)
         elif action == "load" and team:
             self.universal_load(team)
+
+    # [2026-03-28] Причина: modal ship selection lifecycle управляется из menu logic слоя.
+    def open_ship_overlay(self):
+        if self.selected_slot < 0:
+            return
+        self.ship_overlay_active = True
+        self.ship_overlay_team = self.selected_team
+        self.ship_overlay_slot = self.selected_slot
+        self.ship_overlay_ships = list(SHIP_CLASSES.keys())
+        self.ship_overlay_index = 0
+
+    # [2026-03-28] Причина: единая точка закрытия modal ship overlay.
+    def close_ship_overlay(self):
+        self.ship_overlay_active = False
+        self.ship_overlay_team = None
+        self.ship_overlay_slot = None
+
+    # [2026-03-28] Причина: keyboard navigation/confirm/cancel для modal ship overlay.
+    def handle_ship_overlay_event(self, ev):
+        if ev.key == pygame.K_ESCAPE:
+            self.close_ship_overlay()
+            return
+
+        if not self.ship_overlay_ships:
+            self.close_ship_overlay()
+            return
+
+        cols = max(1, int(self.ship_overlay_cols))
+        total = len(self.ship_overlay_ships)
+        rows = (total + cols - 1) // cols
+        row = self.ship_overlay_index // cols
+        col = self.ship_overlay_index % cols
+
+        if ev.key == pygame.K_LEFT:
+            if col > 0:
+                self.ship_overlay_index -= 1
+        elif ev.key == pygame.K_RIGHT:
+            if self.ship_overlay_index + 1 < total and col < cols - 1:
+                self.ship_overlay_index += 1
+        elif ev.key == pygame.K_UP:
+            if row > 0:
+                self.ship_overlay_index -= cols
+        elif ev.key == pygame.K_DOWN:
+            if row < rows - 1 and self.ship_overlay_index + cols < total:
+                self.ship_overlay_index += cols
+        elif ev.key == pygame.K_RETURN:
+            team = self.ship_overlay_team
+            slot = self.ship_overlay_slot
+            if (
+                team in self.teams
+                and isinstance(slot, int)
+                and 0 <= slot < self.team_slots
+                and 0 <= self.ship_overlay_index < total
+            ):
+                self.teams[team][slot] = self.ship_overlay_ships[self.ship_overlay_index]
+            self.close_ship_overlay()
 
     def handle_ship_select_events(self):
         for ev in pygame.event.get():

@@ -340,6 +340,18 @@ class MeleeMenuRenderer:
 
     # [2026-03-19] Причина: вычисление взаимоисключающего режима содержимого правой context-панели.
     def _get_right_panel_mode(self, menu):
+        # [2026-03-28] Причина: при активном ship overlay правая preview-панель должна показывать hovered ship из popup.
+        if getattr(menu, "ship_overlay_active", False):
+            overlay_ships = getattr(menu, "ship_overlay_ships", [])
+            overlay_index = getattr(menu, "ship_overlay_index", 0)
+            if 0 <= overlay_index < len(overlay_ships):
+                return {
+                    "kind": "ship",
+                    "team": getattr(menu, "ship_overlay_team", getattr(menu, "selected_team", "Team 1")),
+                    "slot": getattr(menu, "ship_overlay_slot", getattr(menu, "selected_slot", -1)),
+                    "ship_name": overlay_ships[overlay_index],
+                }
+
         if getattr(menu, "selected_right", -1) == -1:
             team_name = getattr(menu, "selected_team", "Team 1")
             slot_index = getattr(menu, "selected_slot", -1)
@@ -543,6 +555,64 @@ class MeleeMenuRenderer:
         bg = self.ui_sprites[0]
         bg_scaled = pygame.transform.scale(bg, (SCREEN_W, SCREEN_H))
         screen.blit(bg_scaled, (0, 0))
+
+    # [2026-03-28] Причина: ship selection должен отображаться как centered modal overlay поверх main menu.
+    def _draw_ship_overlay(self, menu, screen):
+        ships = getattr(menu, "ship_overlay_ships", [])
+        if not ships:
+            return
+
+        cols = max(1, int(getattr(menu, "ship_overlay_cols", 4)))
+        total = len(ships)
+        rows = (total + cols - 1) // cols
+        selected_idx = max(0, min(getattr(menu, "ship_overlay_index", 0), total - 1))
+
+        dim = pygame.Surface((SCREEN_W, SCREEN_H), pygame.SRCALPHA)
+        dim.fill((0, 0, 0, 110))
+        screen.blit(dim, (0, 0))
+
+        popup_w = min(int(SCREEN_W * 0.68), 440)
+        popup_h = min(int(SCREEN_H * 0.58), 320)
+        popup = pygame.Rect(
+            (SCREEN_W - popup_w) // 2,
+            (SCREEN_H - popup_h) // 2,
+            popup_w,
+            popup_h,
+        )
+        pygame.draw.rect(screen, (20, 26, 48), popup)
+        pygame.draw.rect(screen, (120, 170, 255), popup, 2)
+
+        title = self._preview_title_font.render("SELECT SHIP", True, (220, 235, 255))
+        title_pos = (popup.x + 12, popup.y + 10)
+        screen.blit(title, title_pos)
+
+        hint = self._preview_font.render("Arrows: Move   Enter: Select   Esc: Cancel", True, (180, 205, 235))
+        screen.blit(hint, (popup.x + 12, popup.bottom - hint.get_height() - 10))
+
+        content_top = popup.y + 34
+        content_bottom = popup.bottom - 34
+        content = pygame.Rect(popup.x + 10, content_top, popup.width - 20, max(20, content_bottom - content_top))
+
+        gap = max(6, content.width // 50)
+        cell_w = max(36, (content.width - gap * (cols - 1)) // cols)
+        cell_h = max(28, (content.height - gap * (rows - 1)) // max(1, rows))
+
+        for idx, ship_name in enumerate(ships):
+            r = idx // cols
+            c = idx % cols
+            cell = pygame.Rect(
+                content.x + c * (cell_w + gap),
+                content.y + r * (cell_h + gap),
+                cell_w,
+                cell_h,
+            )
+            is_selected = idx == selected_idx
+            fill_col = (34, 72, 126) if not is_selected else (70, 130, 210)
+            br_col = (70, 140, 220) if not is_selected else (185, 225, 255)
+            pygame.draw.rect(screen, fill_col, cell)
+            pygame.draw.rect(screen, br_col, cell, 2 if is_selected else 1)
+
+            self._draw_ship_icon_in_slot(screen, ship_name, cell)
 
     def draw_main_menu(self, menu):
         # [2026-02-03] reason: render background full-screen and place controls by scaled 320x240 anchors.
@@ -810,3 +880,7 @@ class MeleeMenuRenderer:
                 quit_y - quit_scaled.get_height() // 2,
             ),
         )
+
+        # [2026-03-28] Причина: ship picker рисуется поверх main menu как modal overlay.
+        if getattr(menu, "ship_overlay_active", False):
+            self._draw_ship_overlay(menu, screen)
