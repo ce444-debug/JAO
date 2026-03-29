@@ -18,12 +18,28 @@ class Mine(Projectile):
         self.homing_strength = 1.0 # Коэффициент корректировки скорости в режиме homing
         self.launch_time = launch_time
         self.launching = launching   # True, пока мина находится в режиме запуска
+        # [2026-03-29] Reason: add minimal visual lifecycle so Kohr-Ah buzzsaw can play a short death/splinter sequence.
+        self.state = "active"
+        # [2026-03-29] Reason: track animation phase time for renderer-driven buzzsaw frame selection.
+        self.anim_time = 0.0
+        # [2026-03-29] Reason: keep projectile visible briefly after hit without changing gameplay damage behavior.
+        self.dying_duration = 0.18
 
     def update(self, dt):
         """
         Если минa в фазе запуска (launching=True), двигается по заранее заданному vx, vy.
         После окончания запуска — переходит в поведение homing (если цель активна).
         """
+        # [2026-03-29] Reason: always advance animation timer for active and dying render phases.
+        self.anim_time += dt
+
+        # [2026-03-29] Reason: while dying, only keep visual for a short fixed time then deactivate.
+        if self.state == "dying":
+            if self.anim_time >= self.dying_duration:
+                self.state = "finished"
+                self.active = False
+            return
+
         if self.launching:
             # В режиме запуска мина просто движется по начальной скорости
             self.x += self.vx * dt
@@ -52,6 +68,17 @@ class Mine(Projectile):
 
         # Общая логика обёртки по полю
         self.x, self.y = wrap_position(self.x, self.y)
+
+    # [2026-03-29] Reason: switch mine into non-damaging dying visual state instead of instant disappear.
+    def begin_dying(self):
+        if self.state != "active":
+            return
+        self.state = "dying"
+        self.anim_time = 0.0
+        self.damage = 0
+        self.vx = 0
+        self.vy = 0
+        self.launching = False
 
 class Plasmoid(Projectile):
     """

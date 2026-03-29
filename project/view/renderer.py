@@ -68,6 +68,8 @@ asteroid_anims = {}
 planet_anims = {}
 effect_defs = {}
 effect_anims = {}
+# [2026-03-29] Reason: fixed-location UQM Kohr-Ah buzzsaw visuals for primary projectile.
+KOHRAH_BUZZSAW_FRAMES = []
 
 # Trail behavior
 TRAIL_GRACE_MS = 180
@@ -228,6 +230,26 @@ def _load_projectile_animations():
                         except Exception:
                             pass
                         animations[folder]['missile'].append(surf)
+
+
+def _load_kohrah_buzzsaw_frames():
+    # [2026-03-29] Reason: load original UQM buzzsaw sequence from fixed shared asset folder.
+    buzzsaw_dir = os.path.join(PROJECTILES_ROOT, 'kohrah_buzzsaw')
+    names = [f"buzzsaw-big-00{i}.png" for i in range(8)]
+    KOHRAH_BUZZSAW_FRAMES.clear()
+    for name in names:
+        img_path = os.path.join(buzzsaw_dir, name)
+        if not os.path.isfile(img_path):
+            continue
+        surf = pygame.image.load(img_path)
+        try:
+            surf = surf.convert_alpha()
+        except Exception:
+            pass
+        KOHRAH_BUZZSAW_FRAMES.append(surf)
+    if KOHRAH_BUZZSAW_FRAMES:
+        animations.setdefault('kohr_ah', {})['buzzsaw'] = KOHRAH_BUZZSAW_FRAMES
+    print(f"[projectiles] kohr-ah buzzsaw loaded: {len(KOHRAH_BUZZSAW_FRAMES)} frames from {buzzsaw_dir}")
 
 
 # NEW 2025-09-16: load Yehat shield body frames from projectiles folder
@@ -612,11 +634,18 @@ def draw_mine(screen, mine, cam, zoom):
     sx, sy = world_to_screen(mine.x, mine.y, cam.x, cam.y, zoom)
     cls = mine.owner.__class__.__name__.lower() if getattr(mine, 'owner', None) else ''
     folder = ASSET_KEY_MAPPING.get(cls)
+    # [2026-03-29] Reason: prefer fixed Kohr-Ah buzzsaw frames; fallback to existing ship-linked mine animation.
+    fixed_buzzsaw = KOHRAH_BUZZSAW_FRAMES if cls == 'shipb' and KOHRAH_BUZZSAW_FRAMES else None
     key = 'buzzsaw' if folder and 'buzzsaw' in animations.get(folder, {}) else 'mine'
-    frames = animations.get(folder, {}).get(key) if folder else None
+    frames = fixed_buzzsaw or (animations.get(folder, {}).get(key) if folder else None)
     if frames:
-        angle = math.degrees(math.atan2(getattr(mine, 'vy', 0.0), getattr(mine, 'vx', 0.0)))
-        idx = int((angle % 360) / ROTATION_STEP_DEGREES) % len(frames)
+        # [2026-03-29] Reason: animate spinning by time, and run one-shot sequence while mine is dying.
+        anim_time = float(getattr(mine, 'anim_time', 0.0))
+        anim_fps = 24.0
+        if getattr(mine, 'state', '') == 'dying':
+            idx = min(len(frames) - 1, int(anim_time * anim_fps))
+        else:
+            idx = int(anim_time * anim_fps) % len(frames)
         img = frames[idx]
         img_s = _scale_surface(img, zoom)
         w, h = img_s.get_size()
@@ -742,6 +771,7 @@ load_ship_animations()
 _load_projectile_animations()
 _load_cruiser_saturn_human()
 _load_shield_animations()  # NEW 2025-09-16
+_load_kohrah_buzzsaw_frames()  # [2026-03-29] Reason: fixed folder override for Kohr-Ah primary buzzsaw frames.
 load_asteroid_animations()
 load_effects_animations()
 load_planet_animations()
