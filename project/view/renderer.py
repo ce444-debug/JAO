@@ -234,22 +234,36 @@ def _load_projectile_animations():
 
 def _load_kohrah_buzzsaw_frames():
     # [2026-03-29] Reason: load original UQM buzzsaw sequence from fixed shared asset folder.
-    buzzsaw_dir = os.path.join(PROJECTILES_ROOT, 'kohrah_buzzsaw')
+    candidate_dirs = [
+        os.path.join(PROJECTILES_ROOT, 'kohrah_buzzsaw'),
+        # [2026-03-29] Reason: support repo-root `assets/projectiles/kohrah_buzzsaw` layout to avoid path mismatch.
+        os.path.join(os.path.dirname(PROJECT_ROOT), 'assets', 'projectiles', 'kohrah_buzzsaw'),
+    ]
     names = [f"buzzsaw-big-00{i}.png" for i in range(8)]
     KOHRAH_BUZZSAW_FRAMES.clear()
-    for name in names:
-        img_path = os.path.join(buzzsaw_dir, name)
-        if not os.path.isfile(img_path):
+    loaded_from = None
+    for buzzsaw_dir in candidate_dirs:
+        if not os.path.isdir(buzzsaw_dir):
             continue
-        surf = pygame.image.load(img_path)
-        try:
-            surf = surf.convert_alpha()
-        except Exception:
-            pass
-        KOHRAH_BUZZSAW_FRAMES.append(surf)
+        tmp_frames = []
+        for name in names:
+            img_path = os.path.join(buzzsaw_dir, name)
+            if not os.path.isfile(img_path):
+                tmp_frames = []
+                break
+            surf = pygame.image.load(img_path)
+            try:
+                surf = surf.convert_alpha()
+            except Exception:
+                pass
+            tmp_frames.append(surf)
+        if len(tmp_frames) == len(names):
+            KOHRAH_BUZZSAW_FRAMES.extend(tmp_frames)
+            loaded_from = buzzsaw_dir
+            break
     if KOHRAH_BUZZSAW_FRAMES:
         animations.setdefault('kohr_ah', {})['buzzsaw'] = KOHRAH_BUZZSAW_FRAMES
-    print(f"[projectiles] kohr-ah buzzsaw loaded: {len(KOHRAH_BUZZSAW_FRAMES)} frames from {buzzsaw_dir}")
+    print(f"[projectiles] kohr-ah buzzsaw loaded: {len(KOHRAH_BUZZSAW_FRAMES)} frames from {loaded_from}")
 
 
 # NEW 2025-09-16: load Yehat shield body frames from projectiles folder
@@ -579,6 +593,10 @@ def draw_ship(screen, ship, cam, zoom):
 
 # ---------------- draw: generic projectile ----------------
 def draw_projectile(screen, proj, cam, zoom):
+    # [2026-03-29] Reason: Mine has `launch_time` and was incorrectly treated as missile; force mine renderer path.
+    if getattr(proj.__class__, "__name__", "").lower() == "mine":
+        draw_mine(screen, proj, cam, zoom)
+        return
     def _is_missile_like(o):
         name = o.__class__.__name__.lower() if hasattr(o, '__class__') else ''
         if name in ('missile', 'cruisermissile'):
@@ -634,10 +652,12 @@ def draw_mine(screen, mine, cam, zoom):
     sx, sy = world_to_screen(mine.x, mine.y, cam.x, cam.y, zoom)
     cls = mine.owner.__class__.__name__.lower() if getattr(mine, 'owner', None) else ''
     folder = ASSET_KEY_MAPPING.get(cls)
-    # [2026-03-29] Reason: prefer fixed Kohr-Ah buzzsaw frames; fallback to existing ship-linked mine animation.
-    fixed_buzzsaw = KOHRAH_BUZZSAW_FRAMES if cls == 'shipb' and KOHRAH_BUZZSAW_FRAMES else None
-    key = 'buzzsaw' if folder and 'buzzsaw' in animations.get(folder, {}) else 'mine'
-    frames = fixed_buzzsaw or (animations.get(folder, {}).get(key) if folder else None)
+    # [2026-03-29] Reason: Kohr-Ah mine must not silently fall back to old dark placeholder art.
+    if cls == 'shipb':
+        frames = KOHRAH_BUZZSAW_FRAMES
+    else:
+        key = 'buzzsaw' if folder and 'buzzsaw' in animations.get(folder, {}) else 'mine'
+        frames = animations.get(folder, {}).get(key) if folder else None
     if frames:
         # [2026-03-29] Reason: animate spinning by time, and run one-shot sequence while mine is dying.
         anim_time = float(getattr(mine, 'anim_time', 0.0))
@@ -651,7 +671,9 @@ def draw_mine(screen, mine, cam, zoom):
         w, h = img_s.get_size()
         screen.blit(img_s, (int(sx - w / 2), int(sy - h / 2)))
     else:
-        pygame.draw.circle(screen, (255, 0, 0), (int(sx), int(sy)), max(1, int(getattr(mine, 'radius', 3) * zoom)))
+        # [2026-03-29] Reason: explicit debug-visible fallback for missing Kohr-Ah buzzsaw assets.
+        color = (255, 0, 255) if cls == 'shipb' else (255, 0, 0)
+        pygame.draw.circle(screen, color, (int(sx), int(sy)), max(1, int(getattr(mine, 'radius', 3) * zoom)))
 
 
 # ---------------- draw: plasmoid ----------------
