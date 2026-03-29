@@ -51,6 +51,8 @@ CARD_COST_LABEL_RECT = pygame.Rect(34, 104, 28, 10)
 CARD_COST_VALUE_RECT = pygame.Rect(35, 98, 26, 12)
 CARD_EMPTY_RECT = pygame.Rect(12, 58, 72, 16)
 CARD_TEAM_RECT = pygame.Rect(16, 58, 64, 16)
+# [2026-03-28] Причина: точная геометрия видимой матрицы grid в meleemenu-027 (5x5, шаг 18px, origin 19x4 в базовом 128x98).
+SHIP_OVERLAY_GRID_RECT = pygame.Rect(19, 4, 90, 90)
 
 # [2026-02-03] reason: control option order must match menu logic values.
 CONTROL_OPTIONS = [
@@ -78,7 +80,7 @@ class MeleeMenuRenderer:
     def __init__(self):
         # [2026-02-03] reason: load UQM control sprites 000..008 into dictionary for direct frame access.
         self.ui_sprites = {}
-        for frame in [0, 1, 2, 3, 4, 5, 6, 7, 8, 17, 18, 19, 20, 25, 26, 29, 30]:
+        for frame in [0, 1, 2, 3, 4, 5, 6, 7, 8, 17, 18, 19, 20, 25, 26, 27, 29, 30]:
             self.ui_sprites[frame] = self._load_frame(frame)
         # [2026-02-03] reason: diagnostic click-capture flow for automatic button anchor picking.
         self._anchor_targets = [
@@ -143,15 +145,25 @@ class MeleeMenuRenderer:
     # [2026-03-17] Причина: контекстная подсветка поля имени команды при выборе заголовка команды.
     def _draw_team_name(self, menu, screen, team_name, base_rect, scale_x, scale_y):
         rect = self._scale_rect(base_rect, scale_x, scale_y)
-        name_value = menu.team_names.get(team_name, "")
-        if not name_value:
-            name_value = "TEAM 1" if team_name == "Team 1" else "TEAM 2"
+        raw_name_value = menu.team_names.get(team_name, "")
+        fallback_name = "TEAM 1" if team_name == "Team 1" else "TEAM 2"
 
         selected_header = (
             getattr(menu, "selected_right", -1) == -1
             and getattr(menu, "selected_team", "") == team_name
             and getattr(menu, "selected_slot", -1) == -1
         )
+
+        editing_active = (
+            getattr(menu, "editing_team", False)
+            and getattr(menu, "selected_team", "") == team_name
+            and selected_header
+        )
+
+        if editing_active:
+            name_value = f"{getattr(menu, 'editing_team_name', '')}_"
+        else:
+            name_value = raw_name_value if str(raw_name_value).strip() else fallback_name
 
         bg_col = (20, 40, 84) if selected_header else (8, 20, 52)
         br_col = (130, 200, 255) if selected_header else (50, 90, 160)
@@ -330,6 +342,18 @@ class MeleeMenuRenderer:
 
     # [2026-03-19] Причина: вычисление взаимоисключающего режима содержимого правой context-панели.
     def _get_right_panel_mode(self, menu):
+        # [2026-03-28] Причина: при активном ship overlay правая preview-панель должна показывать hovered ship из popup.
+        if getattr(menu, "ship_overlay_active", False):
+            overlay_ships = getattr(menu, "ship_overlay_ships", [])
+            overlay_index = getattr(menu, "ship_overlay_index", 0)
+            if 0 <= overlay_index < len(overlay_ships):
+                return {
+                    "kind": "ship",
+                    "team": getattr(menu, "ship_overlay_team", getattr(menu, "selected_team", "Team 1")),
+                    "slot": getattr(menu, "ship_overlay_slot", getattr(menu, "selected_slot", -1)),
+                    "ship_name": overlay_ships[overlay_index],
+                }
+
         if getattr(menu, "selected_right", -1) == -1:
             team_name = getattr(menu, "selected_team", "Team 1")
             slot_index = getattr(menu, "selected_slot", -1)
@@ -533,6 +557,79 @@ class MeleeMenuRenderer:
         bg = self.ui_sprites[0]
         bg_scaled = pygame.transform.scale(bg, (SCREEN_W, SCREEN_H))
         screen.blit(bg_scaled, (0, 0))
+
+    # [2026-03-28] Причина: ship selection должен отображаться как centered modal overlay поверх main menu.
+    def _draw_ship_overlay(self, menu, screen):
+        ships = getattr(menu, "ship_overlay_ships", [])
+
+        cols = max(1, int(getattr(menu, "ship_overlay_cols", 5)))
+        # [2026-03-28] Причина: popup ship picker должен использовать fixed row/col matrix с видимыми empty cells.
+        rows = max(1, int(getattr(menu, "ship_overlay_rows", 5)))
+        total_cells = cols * rows
+        selected_idx = max(0, min(getattr(menu, "ship_overlay_index", 0), total_cells - 1))
+
+        popup_img = self.ui_sprites.get(27)
+        if popup_img is None or popup_img.get_width() <= 1 or popup_img.get_height() <= 1:
+            return
+
+        dim = pygame.Surface((SCREEN_W, SCREEN_H), pygame.SRCALPHA)
+        dim.fill((0, 0, 0, 110))
+        screen.blit(dim, (0, 0))
+
+        scale_x = SCREEN_W / BASE_W
+        scale_y = SCREEN_H / BASE_H
+        popup_w = max(1, int(popup_img.get_width() * scale_x))
+        popup_h = max(1, int(popup_img.get_height() * scale_y))
+        popup = pygame.Rect(
+            (SCREEN_W - popup_w) // 2,
+            (SCREEN_H - popup_h) // 2,
+            popup_w,
+            popup_h,
+        )
+        popup_scaled = pygame.transform.scale(popup_img, (popup_w, popup_h))
+        screen.blit(popup_scaled, popup.topleft)
+
+        # [2026-03-28] Причина: ячейки должны точно совпасть с пиксельной сеткой popup asset, поэтому строим их из local-пикселей 027 и масштабируем в screen-space.
+        grid_local_x = SHIP_OVERLAY_GRID_RECT.x
+        grid_local_y = SHIP_OVERLAY_GRID_RECT.y
+        cell_local_w = SHIP_OVERLAY_GRID_RECT.width / cols
+        cell_local_h = SHIP_OVERLAY_GRID_RECT.height / rows
+
+        for idx in range(total_cells):
+            r = idx // cols
+            c = idx % cols
+            local_x1 = grid_local_x + c * cell_local_w
+            local_y1 = grid_local_y + r * cell_local_h
+            local_x2 = local_x1 + cell_local_w
+            local_y2 = local_y1 + cell_local_h
+
+            cell = pygame.Rect(
+                popup.x + int((local_x1 / popup_img.get_width()) * popup.width),
+                popup.y + int((local_y1 / popup_img.get_height()) * popup.height),
+                max(1, int((local_x2 / popup_img.get_width()) * popup.width) - int((local_x1 / popup_img.get_width()) * popup.width)),
+                max(1, int((local_y2 / popup_img.get_height()) * popup.height) - int((local_y1 / popup_img.get_height()) * popup.height)),
+            )
+            is_selected = idx == selected_idx
+            # [2026-03-28] Причина: highlight должен быть cursor-frame поверх встроенной grid-графики popup, без заливки ячейки.
+            if is_selected:
+                pygame.draw.rect(screen, (235, 245, 255), cell, 2)
+                inner = cell.inflate(-4, -4)
+                if inner.width > 2 and inner.height > 2:
+                    pygame.draw.rect(screen, (90, 160, 245), inner, 1)
+            if idx < len(ships):
+                ship_name = ships[idx]
+                icon_pad_x = max(2, cell.width // 10)
+                icon_pad_y = max(2, cell.height // 10)
+                icon_rect = cell.inflate(-icon_pad_x * 2, -icon_pad_y * 2)
+                if icon_rect.width > 0 and icon_rect.height > 0:
+                    # [2026-03-28] Причина: в popup используем реальные ship icons; fallback-плашки не рисуем, чтобы не подменять стиль ассета.
+                    ship_icon = self._get_scaled_ship_icon(ship_name, icon_rect.width, icon_rect.height)
+                    if ship_icon is not None:
+                        icon_pos = (
+                            icon_rect.centerx - ship_icon.get_width() // 2,
+                            icon_rect.centery - ship_icon.get_height() // 2,
+                        )
+                        screen.blit(ship_icon, icon_pos)
 
     def draw_main_menu(self, menu):
         # [2026-02-03] reason: render background full-screen and place controls by scaled 320x240 anchors.
@@ -800,3 +897,7 @@ class MeleeMenuRenderer:
                 quit_y - quit_scaled.get_height() // 2,
             ),
         )
+
+        # [2026-03-28] Причина: ship picker рисуется поверх main menu как modal overlay.
+        if getattr(menu, "ship_overlay_active", False):
+            self._draw_ship_overlay(menu, screen)

@@ -100,15 +100,15 @@
     "mode": "Human Control vs Human Control",
     "teams": {
       "Team 1": [
-        "YEHAT TERMINATOR",
         "Earthling Cruiser",
-        null,
-        null,
-        null,
-        null,
-        null,
         "KOHR-AH MARAUDER",
         null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        "Earthling Cruiser",
         null,
         null,
         null,
@@ -121,9 +121,9 @@
         "KOHR-AH MARAUDER",
         null,
         "Earthling Cruiser",
-        "Earthling Cruiser",
+        "YEHAT TERMINATOR",
         null,
-        null,
+        "KOHR-AH MARAUDER",
         null,
         null,
         null,
@@ -133,7 +133,7 @@
       ]
     },
     "team_names": {
-      "Team 1": "\u041f\u0440\u0430\u0432\u0435\u0440\u043a\u0430",
+      "Team 1": "babubu",
       "Team 2": "\u041f\u0440\u0430\u0432\u0435\u0440\u043a\u0430"
     },
     "settings": {
@@ -147,7 +147,7 @@
       }
     },
     "initial_ships": {
-      "Team 1": "YEHAT TERMINATOR",
+      "Team 1": "Earthling Cruiser",
       "Team 2": "YEHAT TERMINATOR"
     },
     "initial_slots": {
