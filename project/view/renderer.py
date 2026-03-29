@@ -659,13 +659,19 @@ def draw_mine(screen, mine, cam, zoom):
         key = 'buzzsaw' if folder and 'buzzsaw' in animations.get(folder, {}) else 'mine'
         frames = animations.get(folder, {}).get(key) if folder else None
     if frames:
-        # [2026-03-29] Reason: animate spinning by time, and run one-shot sequence while mine is dying.
+        # [2026-03-29] Reason: enforce UQM timing map (active uses only 000/001; dying uses 002..007 once).
         anim_time = float(getattr(mine, 'anim_time', 0.0))
-        anim_fps = 24.0
         if getattr(mine, 'state', '') == 'dying':
-            idx = min(len(frames) - 1, int(anim_time * anim_fps))
+            # [2026-03-29] Reason: on destruction show impact frame 002 then splinter 003..007 exactly once.
+            death_seq = list(range(2, min(len(frames), 8)))
+            death_fps = 24.0
+            step = min(len(death_seq) - 1, int(anim_time * death_fps)) if death_seq else 0
+            idx = death_seq[step] if death_seq else 0
         else:
-            idx = int(anim_time * anim_fps) % len(frames)
+            # [2026-03-29] Reason: active spin must loop only frames 000 and 001, never destruction frames.
+            spin_seq = [0, 1] if len(frames) >= 2 else [0]
+            spin_fps = 16.0
+            idx = spin_seq[int(anim_time * spin_fps) % len(spin_seq)]
         img = frames[idx]
         img_s = _scale_surface(img, zoom)
         w, h = img_s.get_size()
