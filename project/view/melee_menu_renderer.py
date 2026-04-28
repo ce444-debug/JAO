@@ -13,9 +13,9 @@ AUTO_ANCHOR_MODE = False
 # [2026-02-03] reason: base UQM menu resolution for anchor conversion.
 BASE_W = 320
 BASE_H = 240
-# [2026-04-28] Reason: shift Team Control anchors slightly left to align sprite center with right-panel control slot background.
-TEAM1_POS = (286, 39)
-TEAM2_POS = (286, 182)
+# [2026-04-28] Reason: post-calibration tweak for Team Control sprite alignment within right-panel slot background.
+TEAM1_POS = (287, 39)
+TEAM2_POS = (287, 182)
 # [2026-02-03] reason: anchors for Save/Load/Battle button sprites in 320x240 layout space.
 SAVE_T1_POS = (286, 61)
 LOAD_T1_POS = (288, 71)
