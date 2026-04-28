@@ -591,8 +591,18 @@ class Game:
             else:
                 projectile.update(dt)
 
+        # [2026-03-29] Reason: centralize projectile visual teardown (supports Kohr-Ah buzzsaw dying phase).
+        def _deactivate_projectile(projectile):
+            if hasattr(projectile, "begin_dying"):
+                projectile.begin_dying()
+            else:
+                projectile.active = False
+
         for projectile in self.missiles:
             if not projectile.active:
+                continue
+            # [2026-03-29] Reason: skip additional collisions for projectiles already in non-damaging dying phase.
+            if getattr(projectile, "state", "") == "dying":
                 continue
             if hasattr(projectile, "target") and projectile.target is not None:
                 tx = projectile.target.x
@@ -631,7 +641,7 @@ class Game:
                                           use_offsets=False))
                     except Exception:
                         pass
-                    projectile.active = False
+                    _deactivate_projectile(projectile)
                     continue
             elif hasattr(projectile, "owner") and projectile.owner is not None:
                 if projectile.owner.id == self.ship1.id:
@@ -668,7 +678,7 @@ class Game:
                                           use_offsets=False))
                     except Exception:
                         pass
-                    projectile.active = False
+                    _deactivate_projectile(projectile)
                     continue
             if isinstance(projectile, Plasmoid) and projectile.active:
                 for other_proj in self.missiles:
@@ -679,8 +689,8 @@ class Game:
                             dx = wrap_delta(projectile.x, other_proj.x, FIELD_W)
                             dy = wrap_delta(projectile.y, other_proj.y, FIELD_H)
                             if math.hypot(dx, dy) < (projectile.radius + other_proj.radius):
-                                projectile.active = False
-                                other_proj.active = False
+                                _deactivate_projectile(projectile)
+                                _deactivate_projectile(other_proj)
                                 break
                 if not projectile.active:
                     continue
@@ -694,12 +704,12 @@ class Game:
                 dy = wrap_delta(projectile.y, asteroid.y, FIELD_H)
                 if math.hypot(dx, dy) < (projectile.radius + asteroid.radius):
                     asteroid.take_damage(projectile.damage if hasattr(projectile, 'damage') else 1)
-                    projectile.active = False
+                    _deactivate_projectile(projectile)
                     break
             dx = wrap_delta(projectile.x, self.planet.x, FIELD_W)
             dy = wrap_delta(projectile.y, self.planet.y, FIELD_H)
             if math.hypot(dx, dy) < (projectile.radius + self.planet.radius):
-                projectile.active = False
+                _deactivate_projectile(projectile)
 
         for i in range(len(self.missiles)):
             for j in range(i + 1, len(self.missiles)):
@@ -711,8 +721,8 @@ class Game:
                     dx = wrap_delta(proj1.x, proj2.x, FIELD_W)
                     dy = wrap_delta(proj1.y, proj2.y, FIELD_H)
                     if math.hypot(dx, dy) <= (proj1.radius + proj2.radius):
-                        proj1.active = False
-                        proj2.active = False
+                        _deactivate_projectile(proj1)
+                        _deactivate_projectile(proj2)
 
         self.missiles = [m for m in self.missiles if m.active]
 

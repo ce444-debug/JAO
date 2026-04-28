@@ -13,8 +13,9 @@ AUTO_ANCHOR_MODE = False
 # [2026-02-03] reason: base UQM menu resolution for anchor conversion.
 BASE_W = 320
 BASE_H = 240
-TEAM1_POS = (289, 39)
-TEAM2_POS = (289, 182)
+# [2026-04-28] Reason: post-calibration tweak for Team Control sprite alignment within right-panel slot background.
+TEAM1_POS = (287, 39)
+TEAM2_POS = (287, 182)
 # [2026-02-03] reason: anchors for Save/Load/Battle button sprites in 320x240 layout space.
 SAVE_T1_POS = (286, 61)
 LOAD_T1_POS = (288, 71)
@@ -61,6 +62,16 @@ CONTROL_OPTIONS = [
     "Good Cyborg",
     "Awesome Cyborg",
 ]
+# [2026-04-28] Reason: selected Save button must blink through original UQM highlight sequence instead of static frame.
+SAVE_BLINK_FRAMES = [18, 20, 21, 23]
+# [2026-04-28] Reason: selected Load button must blink through original UQM highlight sequence instead of static frame.
+LOAD_BLINK_FRAMES = [17, 19, 22, 24]
+# [2026-04-28] Reason: selected Battle button uses original 2-frame UQM blink cycle.
+BATTLE_BLINK_FRAMES = [25, 26]
+# [2026-04-28] Reason: selected Quit button uses original 2-frame UQM blink cycle.
+QUIT_BLINK_FRAMES = [29, 30]
+# [2026-04-28] Reason: fixed animation cadence for menu selection blinking to match UQM timing.
+MENU_BLINK_FRAME_DELAY_MS = 120
 
 # [2026-03-16] Причина: соответствие игровых названий кораблей и доступных иконок меню.
 SHIP_ICON_FILES = {
@@ -78,9 +89,9 @@ ICON_SCALE_OVERRIDES = {
 
 class MeleeMenuRenderer:
     def __init__(self):
-        # [2026-02-03] reason: load UQM control sprites 000..008 into dictionary for direct frame access.
+        # [2026-04-28] Reason: UQM-style menu blink animation uses full frame ranges 001–016, 017–024, 025–026, 029–030.
         self.ui_sprites = {}
-        for frame in [0, 1, 2, 3, 4, 5, 6, 7, 8, 17, 18, 19, 20, 25, 26, 27, 29, 30]:
+        for frame in range(0, 31):
             self.ui_sprites[frame] = self._load_frame(frame)
         # [2026-02-03] reason: diagnostic click-capture flow for automatic button anchor picking.
         self._anchor_targets = [
@@ -112,6 +123,22 @@ class MeleeMenuRenderer:
         fallback = pygame.Surface((1, 1), pygame.SRCALPHA)
         fallback.fill((0, 0, 0, 0))
         return fallback
+
+    def _get_blink_frame(self, frames):
+        # [2026-04-28] Reason: selected menu buttons must animate through original UQM frames instead of using one static highlighted sprite.
+        if not frames:
+            return None
+        phase = (pygame.time.get_ticks() // MENU_BLINK_FRAME_DELAY_MS) % len(frames)
+        return frames[int(phase)]
+
+    def _get_control_blink_frame(self, control_value):
+        # [2026-04-28] Reason: control options use a 4x4 frame matrix: control index plus blink phase.
+        try:
+            control_index = CONTROL_OPTIONS.index(control_value)
+        except ValueError:
+            control_index = 0
+        phase = (pygame.time.get_ticks() // MENU_BLINK_FRAME_DELAY_MS) % 4
+        return 1 + control_index + int(phase) * 4
 
     # [2026-03-16] Причина: единая конвертация Rect из 320x240 в текущее экранное разрешение.
     def _scale_rect(self, rect, scale_x, scale_y):
@@ -710,7 +737,8 @@ class MeleeMenuRenderer:
         # Team 1 control sprite
         team1_idx = CONTROL_OPTIONS.index(menu.settings["Team 1"]["control"])
         if menu.selected_right == 0:
-            team1_sprite = 1 + team1_idx
+            # [2026-04-28] Reason: selected Team Control must blink using UQM control matrix frames 001..016.
+            team1_sprite = self._get_control_blink_frame(menu.settings["Team 1"]["control"])
         else:
             team1_sprite = 5 + team1_idx
         # [2026-02-03] reason: control sprite must scale with background scale factors.
@@ -734,7 +762,8 @@ class MeleeMenuRenderer:
         # Team 2 control sprite
         team2_idx = CONTROL_OPTIONS.index(menu.settings["Team 2"]["control"])
         if menu.selected_right == 6:
-            team2_sprite = 1 + team2_idx
+            # [2026-04-28] Reason: selected Team Control must blink using UQM control matrix frames 001..016.
+            team2_sprite = self._get_control_blink_frame(menu.settings["Team 2"]["control"])
         else:
             team2_sprite = 5 + team2_idx
         # [2026-02-03] reason: control sprite must scale with background scale factors.
@@ -759,7 +788,8 @@ class MeleeMenuRenderer:
         selected = menu.selected_right
 
         if selected == 1:
-            save_t1_frame = 20
+            # [2026-04-28] Reason: selected Save must animate instead of static highlighted sprite.
+            save_t1_frame = self._get_blink_frame(SAVE_BLINK_FRAMES)
         else:
             save_t1_frame = 18
         save_t1_x = int(SAVE_T1_POS[0] * scale_x)
@@ -781,7 +811,8 @@ class MeleeMenuRenderer:
         )
 
         if selected == 2:
-            load_t1_frame = 19
+            # [2026-04-28] Reason: selected Load must animate instead of static highlighted sprite.
+            load_t1_frame = self._get_blink_frame(LOAD_BLINK_FRAMES)
         else:
             load_t1_frame = 17
         load_t1_x = int(LOAD_T1_POS[0] * scale_x)
@@ -803,7 +834,8 @@ class MeleeMenuRenderer:
         )
 
         if selected == 5:
-            save_t2_frame = 20
+            # [2026-04-28] Reason: selected Save must animate instead of static highlighted sprite.
+            save_t2_frame = self._get_blink_frame(SAVE_BLINK_FRAMES)
         else:
             save_t2_frame = 18
         save_t2_x = int(SAVE_T2_POS[0] * scale_x)
@@ -825,7 +857,8 @@ class MeleeMenuRenderer:
         )
 
         if selected == 4:
-            load_t2_frame = 19
+            # [2026-04-28] Reason: selected Load must animate instead of static highlighted sprite.
+            load_t2_frame = self._get_blink_frame(LOAD_BLINK_FRAMES)
         else:
             load_t2_frame = 17
         load_t2_x = int(LOAD_T2_POS[0] * scale_x)
@@ -849,7 +882,8 @@ class MeleeMenuRenderer:
         panel_mode = self._get_right_panel_mode(menu)
 
         if selected == 3:
-            battle_frame = 26
+            # [2026-04-28] Reason: selected Battle must animate through original 2-frame blink sequence.
+            battle_frame = self._get_blink_frame(BATTLE_BLINK_FRAMES)
         else:
             battle_frame = 25
         battle_x = int(BATTLE_POS[0] * scale_x)
@@ -877,7 +911,8 @@ class MeleeMenuRenderer:
             self._draw_battle_area_content(menu, screen, battle_rect, panel_mode)
 
         if selected == 7:
-            quit_frame = 30
+            # [2026-04-28] Reason: selected Quit must animate through original 2-frame blink sequence.
+            quit_frame = self._get_blink_frame(QUIT_BLINK_FRAMES)
         else:
             quit_frame = 29
         quit_x = int(QUIT_POS[0] * scale_x)
