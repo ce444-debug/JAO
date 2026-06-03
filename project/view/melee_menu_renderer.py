@@ -84,15 +84,14 @@ PICKSHIP_CELL_CENTERS = [
     (14, 52), (29, 52), (44, 52), (59, 52), (74, 52), (89, 52), (104, 52),
     (119, 33), (119, 52),
 ]
-# [2026-04-28] Reason: selection highlight is a pale UQM-style square behind the icon, not an outline frame.
-PICKSHIP_SELECTOR_SIZE = (15, 15)
-# [2026-04-28] Reason: ship icons need a larger pickship-specific target to match original UQM cell visual size.
-PICKSHIP_ICON_TARGET_SIZE = (18, 18)
-# [2026-04-28] Reason: dynamic team name should cover only the narrow original label strip, not a large dark rectangle.
-PICKSHIP_TEAM_NAME_RECT = pygame.Rect(39, 80, 50, 6)
-# [2026-04-28] Reason: render fleet points small and aligned to the original panel corner counters.
-PICKSHIP_POINTS_LEFT_RECT = pygame.Rect(4, 4, 24, 7)
-PICKSHIP_POINTS_RIGHT_RECT = pygame.Rect(100, 4, 24, 7)
+# [2026-04-28] Reason: selection highlight uses the baked ? cell footprint as a pale square behind content, not an outline frame.
+PICKSHIP_SELECTOR_SIZE = (18, 18)
+# [2026-04-28] Reason: pickship icons need a larger target box after alpha-cropping to match Yehat's visual size.
+PICKSHIP_ICON_TARGET_SIZE = (20, 20)
+# [2026-04-28] Reason: dynamic team name should cover only a very narrow blended label strip, not a heavy black rectangle.
+PICKSHIP_TEAM_NAME_RECT = pygame.Rect(41, 81, 46, 5)
+# [2026-04-28] Reason: render fleet points once in the original small top-left panel counter.
+PICKSHIP_POINTS_RECT = pygame.Rect(5, 4, 22, 7)
 # [2026-04-28] Reason: selected pre-battle slot uses a visual-only blink without mutating menu state.
 PICKSHIP_SELECT_BLINK_MS = 180
 
@@ -111,9 +110,9 @@ ICON_SCALE_OVERRIDES = {
 
 # [2026-04-28] Reason: pickship icons need separate visual-size tuning without affecting main menu icon rendering.
 PICKSHIP_ICON_SCALE_OVERRIDES = {
-    "EARTHLING CRUISER": 1.45,
-    "KOHR-AH MARAUDER": 1.15,
-    "YEHAT TERMINATOR": 1.30,
+    "EARTHLING CRUISER": 1.35,
+    "KOHR-AH MARAUDER": 1.30,
+    "YEHAT TERMINATOR": 1.00,
 }
 
 
@@ -310,13 +309,13 @@ class MeleeMenuRenderer:
         return scaled
 
     def _get_scaled_pickship_icon(self, ship_name, target_w, target_h):
-        # [2026-04-28] Reason: normalize pickship-only ship icon visual sizes without changing main menu icon scaling.
+        # [2026-04-28] Reason: alpha-crop pickship icons before scaling so transparent source padding does not make ships look inconsistent.
         key = self._normalize_ship_key(ship_name)
         if not key:
             return None
 
         override = PICKSHIP_ICON_SCALE_OVERRIDES.get(key, 1.0)
-        cache_key = ("pickship", key, target_w, target_h, override)
+        cache_key = ("pickship_alpha_crop", key, target_w, target_h, override)
         if cache_key in self._ship_icon_scaled_cache:
             return self._ship_icon_scaled_cache[cache_key]
 
@@ -324,6 +323,10 @@ class MeleeMenuRenderer:
         if source is None:
             self._ship_icon_scaled_cache[cache_key] = None
             return None
+
+        bounds = source.get_bounding_rect()
+        if bounds.width > 0 and bounds.height > 0:
+            source = source.subsurface(bounds).copy()
 
         src_w, src_h = source.get_size()
         if src_w <= 0 or src_h <= 0:
@@ -790,18 +793,17 @@ class MeleeMenuRenderer:
         return total
 
     def _draw_pickship_points(self, screen, panel_rect, panel_frame, menu, team):
-        # [2026-04-28] Reason: UQM pickship panels show fleet points in both top corners; mirror total points for now.
+        # [2026-04-28] Reason: draw total fleet points once in the top-left counter, avoiding duplicated unclear corner text.
         points = str(self._pickship_team_points(menu, team))
-        for local_rect in (PICKSHIP_POINTS_LEFT_RECT, PICKSHIP_POINTS_RIGHT_RECT):
-            rect = self._scale_pickship_local_rect(panel_rect, panel_frame, local_rect)
-            txt = self._slot_font.render(points, True, (235, 240, 255))
-            screen.blit(
-                txt,
-                (
-                    rect.centerx - txt.get_width() // 2,
-                    rect.centery - txt.get_height() // 2,
-                ),
-            )
+        rect = self._scale_pickship_local_rect(panel_rect, panel_frame, PICKSHIP_POINTS_RECT)
+        txt = self._slot_font.render(points, True, (235, 240, 255))
+        screen.blit(
+            txt,
+            (
+                rect.centerx - txt.get_width() // 2,
+                rect.centery - txt.get_height() // 2,
+            ),
+        )
 
     def _draw_pickship_panel(self, menu, screen, team, panel_rect, panel_frame, selected_idx, confirmed_idx):
         # [2026-04-28] Reason: draw compact UQM-style pickship panel while keeping fleet cells dynamic from menu.teams.
@@ -816,8 +818,10 @@ class MeleeMenuRenderer:
         self._draw_pickship_points(screen, panel_rect, panel_frame, menu, team)
 
         label_rect = self._scale_pickship_local_rect(panel_rect, panel_frame, PICKSHIP_TEAM_NAME_RECT)
-        # [2026-04-28] Reason: cover only the small baked label strip before drawing the dynamic team name.
-        pygame.draw.rect(screen, (24, 26, 34), label_rect)
+        # [2026-04-28] Reason: blend a tiny dark-blue strip over baked label text without creating a heavy black rectangle.
+        label_cover = pygame.Surface(label_rect.size, pygame.SRCALPHA)
+        label_cover.fill((16, 22, 42, 150))
+        screen.blit(label_cover, label_rect.topleft)
         fallback_name = "TEAM 1" if team == "Team 1" else "TEAM 2"
         team_name = str(menu.team_names.get(team, fallback_name) or fallback_name)
         label = self._preview_font.render(team_name, True, (235, 240, 255))
