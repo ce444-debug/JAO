@@ -78,20 +78,25 @@ PICKSHIP_PANEL_TOP_Y = 34
 PICKSHIP_PANEL_BOTTOM_Y = 318
 # [2026-04-28] Reason: fallback native size is used only when meleepickship PNG assets are absent in a dev checkout.
 PICKSHIP_FALLBACK_NATIVE_SIZE = (128, 96)
-# [2026-04-28] Reason: calibrated UQM local centers keep 7 fleet cells per row with ? at index 14 and X at index 15.
-PICKSHIP_CELL_CENTERS = [
-    (14, 33), (29, 33), (44, 33), (59, 33), (74, 33), (89, 33), (104, 33),
-    (14, 52), (29, 52), (44, 52), (59, 52), (74, 52), (89, 52), (104, 52),
-    (119, 33), (119, 52),
+# [2026-04-28] Reason: split explicit pickship fleet centers from baked ?/X centers so the far-right cells can be calibrated independently.
+PICKSHIP_FLEET_CELL_CENTERS = [
+    (13, 33), (30, 32), (47, 33), (64, 32), (81, 33), (98, 32), (110, 33),
+    (13, 53), (30, 52), (47, 53), (64, 52), (81, 53), (98, 52), (110, 53),
 ]
-# [2026-04-28] Reason: selection highlight uses the baked ? cell footprint as a pale square behind content, not an outline frame.
-PICKSHIP_SELECTOR_SIZE = (18, 18)
-# [2026-04-28] Reason: pickship icons need a larger target box after alpha-cropping to match Yehat's visual size.
-PICKSHIP_ICON_TARGET_SIZE = (20, 20)
-# [2026-04-28] Reason: dynamic team name should cover only a very narrow blended label strip, not a heavy black rectangle.
-PICKSHIP_TEAM_NAME_RECT = pygame.Rect(41, 81, 46, 5)
-# [2026-04-28] Reason: render fleet points once in the original small top-left panel counter.
+# [2026-04-28] Reason: index 14 must align with the baked random-ship ? cell and index 15 with the baked X cell.
+PICKSHIP_RANDOM_CELL_CENTER = (121, 33)
+PICKSHIP_CANCEL_CELL_CENTER = (121, 53)
+PICKSHIP_CELL_CENTERS = PICKSHIP_FLEET_CELL_CENTERS + [PICKSHIP_RANDOM_CELL_CENTER, PICKSHIP_CANCEL_CELL_CENTER]
+# [2026-04-28] Reason: selection highlight uses the baked ?/X footprint as a pale square behind content, not an outline frame.
+PICKSHIP_SELECTOR_SIZE = (22, 22)
+# [2026-04-28] Reason: pickship icons need a larger alpha-cropped target box so Earthling and Kohr-Ah can match Yehat's visual scale.
+PICKSHIP_ICON_TARGET_SIZE = (30, 30)
+# [2026-04-28] Reason: dynamic team name should cover only the narrow original label strip with a light blended overlay.
+PICKSHIP_TEAM_NAME_RECT = pygame.Rect(43, 81, 42, 5)
+# [2026-04-28] Reason: cover baked point counters on both sides, then draw dynamic fleet points only once at top-left.
 PICKSHIP_POINTS_RECT = pygame.Rect(5, 4, 22, 7)
+PICKSHIP_POINTS_LEFT_COVER_RECT = pygame.Rect(3, 3, 28, 9)
+PICKSHIP_POINTS_RIGHT_COVER_RECT = pygame.Rect(96, 3, 28, 9)
 # [2026-04-28] Reason: selected pre-battle slot uses a visual-only blink without mutating menu state.
 PICKSHIP_SELECT_BLINK_MS = 180
 
@@ -110,8 +115,8 @@ ICON_SCALE_OVERRIDES = {
 
 # [2026-04-28] Reason: pickship icons need separate visual-size tuning without affecting main menu icon rendering.
 PICKSHIP_ICON_SCALE_OVERRIDES = {
-    "EARTHLING CRUISER": 1.35,
-    "KOHR-AH MARAUDER": 1.30,
+    "EARTHLING CRUISER": 1.55,
+    "KOHR-AH MARAUDER": 1.45,
     "YEHAT TERMINATOR": 1.00,
 }
 
@@ -793,7 +798,13 @@ class MeleeMenuRenderer:
         return total
 
     def _draw_pickship_points(self, screen, panel_rect, panel_frame, menu, team):
-        # [2026-04-28] Reason: draw total fleet points once in the top-left counter, avoiding duplicated unclear corner text.
+        # [2026-04-28] Reason: hide baked corner counters first, then draw total fleet points once in the top-left counter.
+        for cover_rect in (PICKSHIP_POINTS_LEFT_COVER_RECT, PICKSHIP_POINTS_RIGHT_COVER_RECT):
+            rect = self._scale_pickship_local_rect(panel_rect, panel_frame, cover_rect)
+            cover = pygame.Surface(rect.size, pygame.SRCALPHA)
+            cover.fill((14, 20, 42, 170))
+            screen.blit(cover, rect.topleft)
+
         points = str(self._pickship_team_points(menu, team))
         rect = self._scale_pickship_local_rect(panel_rect, panel_frame, PICKSHIP_POINTS_RECT)
         txt = self._slot_font.render(points, True, (235, 240, 255))
@@ -818,9 +829,9 @@ class MeleeMenuRenderer:
         self._draw_pickship_points(screen, panel_rect, panel_frame, menu, team)
 
         label_rect = self._scale_pickship_local_rect(panel_rect, panel_frame, PICKSHIP_TEAM_NAME_RECT)
-        # [2026-04-28] Reason: blend a tiny dark-blue strip over baked label text without creating a heavy black rectangle.
+        # [2026-04-28] Reason: blend a tiny low-opacity blue strip over baked label text without creating a heavy black rectangle.
         label_cover = pygame.Surface(label_rect.size, pygame.SRCALPHA)
-        label_cover.fill((16, 22, 42, 150))
+        label_cover.fill((18, 28, 54, 95))
         screen.blit(label_cover, label_rect.topleft)
         fallback_name = "TEAM 1" if team == "Team 1" else "TEAM 2"
         team_name = str(menu.team_names.get(team, fallback_name) or fallback_name)
