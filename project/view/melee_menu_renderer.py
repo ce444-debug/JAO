@@ -78,20 +78,21 @@ PICKSHIP_PANEL_TOP_Y = 34
 PICKSHIP_PANEL_BOTTOM_Y = 318
 # [2026-04-28] Reason: fallback native size is used only when meleepickship PNG assets are absent in a dev checkout.
 PICKSHIP_FALLBACK_NATIVE_SIZE = (128, 96)
-# [2026-04-28] Reason: explicit UQM local centers keep fleet slots aligned, with ? at index 14 and X at index 15.
+# [2026-04-28] Reason: calibrated UQM local centers keep 7 fleet cells per row with ? at index 14 and X at index 15.
 PICKSHIP_CELL_CENTERS = [
-    (15, 34), (30, 34), (45, 34), (60, 34), (75, 34), (90, 34), (105, 34),
-    (15, 52), (30, 52), (45, 52), (60, 52), (75, 52), (90, 52), (105, 52),
-    (120, 34), (120, 52),
+    (14, 33), (29, 33), (44, 33), (59, 33), (74, 33), (89, 33), (104, 33),
+    (14, 52), (29, 52), (44, 52), (59, 52), (74, 52), (89, 52), (104, 52),
+    (119, 33), (119, 52),
 ]
-PICKSHIP_SELECTOR_SIZE = (16, 16)
-# [2026-04-28] Reason: ship icons were visually too small; enlarge them to fill the native UQM pickship cells.
-PICKSHIP_ICON_SIZE = (15, 15)
+# [2026-04-28] Reason: selection highlight is a pale UQM-style square behind the icon, not an outline frame.
+PICKSHIP_SELECTOR_SIZE = (15, 15)
+# [2026-04-28] Reason: ship icons need a larger pickship-specific target to match original UQM cell visual size.
+PICKSHIP_ICON_TARGET_SIZE = (18, 18)
 # [2026-04-28] Reason: dynamic team name should cover only the narrow original label strip, not a large dark rectangle.
-PICKSHIP_TEAM_NAME_RECT = pygame.Rect(34, 79, 60, 7)
-# [2026-04-28] Reason: render fleet points in the small original top-left/top-right panel counters.
-PICKSHIP_POINTS_LEFT_RECT = pygame.Rect(5, 5, 30, 8)
-PICKSHIP_POINTS_RIGHT_RECT = pygame.Rect(93, 5, 30, 8)
+PICKSHIP_TEAM_NAME_RECT = pygame.Rect(39, 80, 50, 6)
+# [2026-04-28] Reason: render fleet points small and aligned to the original panel corner counters.
+PICKSHIP_POINTS_LEFT_RECT = pygame.Rect(4, 4, 24, 7)
+PICKSHIP_POINTS_RIGHT_RECT = pygame.Rect(100, 4, 24, 7)
 # [2026-04-28] Reason: selected pre-battle slot uses a visual-only blink without mutating menu state.
 PICKSHIP_SELECT_BLINK_MS = 180
 
@@ -106,6 +107,13 @@ ICON_SCALE_OVERRIDES = {
     "EARTHLING CRUISER": 1.08,
     "KOHR-AH MARAUDER": 0.94,
     "YEHAT TERMINATOR": 1.12,
+}
+
+# [2026-04-28] Reason: pickship icons need separate visual-size tuning without affecting main menu icon rendering.
+PICKSHIP_ICON_SCALE_OVERRIDES = {
+    "EARTHLING CRUISER": 1.45,
+    "KOHR-AH MARAUDER": 1.15,
+    "YEHAT TERMINATOR": 1.30,
 }
 
 
@@ -295,6 +303,34 @@ class MeleeMenuRenderer:
 
         scale = min(target_w / src_w, target_h / src_h)
         scale *= ICON_SCALE_OVERRIDES.get(key, 1.0)
+        scaled_w = max(1, min(target_w, int(src_w * scale)))
+        scaled_h = max(1, min(target_h, int(src_h * scale)))
+        scaled = pygame.transform.smoothscale(source, (scaled_w, scaled_h))
+        self._ship_icon_scaled_cache[cache_key] = scaled
+        return scaled
+
+    def _get_scaled_pickship_icon(self, ship_name, target_w, target_h):
+        # [2026-04-28] Reason: normalize pickship-only ship icon visual sizes without changing main menu icon scaling.
+        key = self._normalize_ship_key(ship_name)
+        if not key:
+            return None
+
+        override = PICKSHIP_ICON_SCALE_OVERRIDES.get(key, 1.0)
+        cache_key = ("pickship", key, target_w, target_h, override)
+        if cache_key in self._ship_icon_scaled_cache:
+            return self._ship_icon_scaled_cache[cache_key]
+
+        source = self._get_ship_icon_surface(ship_name)
+        if source is None:
+            self._ship_icon_scaled_cache[cache_key] = None
+            return None
+
+        src_w, src_h = source.get_size()
+        if src_w <= 0 or src_h <= 0:
+            self._ship_icon_scaled_cache[cache_key] = None
+            return None
+
+        scale = min(target_w / src_w, target_h / src_h) * override
         scaled_w = max(1, min(target_w, int(src_w * scale)))
         scaled_h = max(1, min(target_h, int(src_h * scale)))
         scaled = pygame.transform.smoothscale(source, (scaled_w, scaled_h))
@@ -802,22 +838,22 @@ class MeleeMenuRenderer:
             confirmed = isinstance(confirmed_idx, int) and idx == confirmed_idx
 
             if selected and blink_on:
+                # [2026-04-28] Reason: selected cell should blink as a pale background square behind content, with no outline frame.
                 select_fill = pygame.Surface(selector_cell.size, pygame.SRCALPHA)
-                select_fill.fill((230, 235, 255, 70))
+                select_fill.fill((235, 238, 210, 95))
                 screen.blit(select_fill, selector_cell.topleft)
-                pygame.draw.rect(screen, (245, 245, 185), selector_cell, max(1, selector_cell.width // 8))
 
             if confirmed:
+                # [2026-04-28] Reason: confirmed selection uses a subtle stable tint instead of a thick rectangular border.
                 confirm_fill = pygame.Surface(selector_cell.size, pygame.SRCALPHA)
-                confirm_fill.fill((80, 245, 130, 100))
+                confirm_fill.fill((95, 235, 135, 105))
                 screen.blit(confirm_fill, selector_cell.topleft)
-                pygame.draw.rect(screen, (90, 255, 150), selector_cell, max(2, selector_cell.width // 6))
 
             if idx < 14:
                 ship_name = team_slots[idx] if idx < len(team_slots) else None
                 if ship_name:
-                    icon_rect = self._pickship_cell_rect(panel_rect, panel_frame, idx, PICKSHIP_ICON_SIZE)
-                    ship_icon = self._get_scaled_ship_icon(ship_name, icon_rect.width, icon_rect.height)
+                    icon_rect = self._pickship_cell_rect(panel_rect, panel_frame, idx, PICKSHIP_ICON_TARGET_SIZE)
+                    ship_icon = self._get_scaled_pickship_icon(ship_name, icon_rect.width, icon_rect.height)
                     if ship_icon is not None:
                         screen.blit(
                             ship_icon,
