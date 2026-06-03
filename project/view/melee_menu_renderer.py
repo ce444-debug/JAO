@@ -78,15 +78,20 @@ PICKSHIP_PANEL_TOP_Y = 34
 PICKSHIP_PANEL_BOTTOM_Y = 318
 # [2026-04-28] Reason: fallback native size is used only when meleepickship PNG assets are absent in a dev checkout.
 PICKSHIP_FALLBACK_NATIVE_SIZE = (128, 96)
-# [2026-04-28] Reason: explicit local 2x8 cell centers keep UQM pickship slot alignment easy to visually calibrate.
+# [2026-04-28] Reason: explicit UQM local centers keep fleet slots aligned, with ? at index 14 and X at index 15.
 PICKSHIP_CELL_CENTERS = [
-    (16, 34), (30, 34), (44, 34), (58, 34), (72, 34), (86, 34), (100, 34), (114, 34),
-    (16, 51), (30, 51), (44, 51), (58, 51), (72, 51), (86, 51), (100, 51), (114, 51),
+    (15, 34), (30, 34), (45, 34), (60, 34), (75, 34), (90, 34), (105, 34),
+    (15, 52), (30, 52), (45, 52), (60, 52), (75, 52), (90, 52), (105, 52),
+    (120, 34), (120, 52),
 ]
-PICKSHIP_SELECTOR_SIZE = (12, 12)
-PICKSHIP_ICON_SIZE = (11, 11)
-# [2026-04-28] Reason: dynamic team name covers only the compact original label area, not a large black panel block.
-PICKSHIP_TEAM_NAME_RECT = pygame.Rect(22, 77, 84, 10)
+PICKSHIP_SELECTOR_SIZE = (16, 16)
+# [2026-04-28] Reason: ship icons were visually too small; enlarge them to fill the native UQM pickship cells.
+PICKSHIP_ICON_SIZE = (15, 15)
+# [2026-04-28] Reason: dynamic team name should cover only the narrow original label strip, not a large dark rectangle.
+PICKSHIP_TEAM_NAME_RECT = pygame.Rect(34, 79, 60, 7)
+# [2026-04-28] Reason: render fleet points in the small original top-left/top-right panel counters.
+PICKSHIP_POINTS_LEFT_RECT = pygame.Rect(5, 5, 30, 8)
+PICKSHIP_POINTS_RIGHT_RECT = pygame.Rect(93, 5, 30, 8)
 # [2026-04-28] Reason: selected pre-battle slot uses a visual-only blink without mutating menu state.
 PICKSHIP_SELECT_BLINK_MS = 180
 
@@ -737,6 +742,31 @@ class MeleeMenuRenderer:
         )
         return self._scale_pickship_local_rect(panel_rect, panel_frame, local_rect)
 
+    def _pickship_team_points(self, menu, team):
+        # [2026-04-28] Reason: draw visual fleet points from existing ship costs without introducing new gameplay rules.
+        total = 0
+        for ship_name in menu.teams.get(team, []):
+            if not ship_name:
+                continue
+            stats = self._get_ship_stats(ship_name)
+            if stats:
+                total += int(stats.get("cost", 0) or 0)
+        return total
+
+    def _draw_pickship_points(self, screen, panel_rect, panel_frame, menu, team):
+        # [2026-04-28] Reason: UQM pickship panels show fleet points in both top corners; mirror total points for now.
+        points = str(self._pickship_team_points(menu, team))
+        for local_rect in (PICKSHIP_POINTS_LEFT_RECT, PICKSHIP_POINTS_RIGHT_RECT):
+            rect = self._scale_pickship_local_rect(panel_rect, panel_frame, local_rect)
+            txt = self._slot_font.render(points, True, (235, 240, 255))
+            screen.blit(
+                txt,
+                (
+                    rect.centerx - txt.get_width() // 2,
+                    rect.centery - txt.get_height() // 2,
+                ),
+            )
+
     def _draw_pickship_panel(self, menu, screen, team, panel_rect, panel_frame, selected_idx, confirmed_idx):
         # [2026-04-28] Reason: draw compact UQM-style pickship panel while keeping fleet cells dynamic from menu.teams.
         panel_img = self.pickship_sprites.get(panel_frame)
@@ -747,8 +777,11 @@ class MeleeMenuRenderer:
             pygame.draw.rect(screen, (8, 12, 28), panel_rect)
             pygame.draw.rect(screen, (75, 95, 135), panel_rect, 2)
 
+        self._draw_pickship_points(screen, panel_rect, panel_frame, menu, team)
+
         label_rect = self._scale_pickship_local_rect(panel_rect, panel_frame, PICKSHIP_TEAM_NAME_RECT)
-        pygame.draw.rect(screen, (14, 18, 32), label_rect)
+        # [2026-04-28] Reason: cover only the small baked label strip before drawing the dynamic team name.
+        pygame.draw.rect(screen, (24, 26, 34), label_rect)
         fallback_name = "TEAM 1" if team == "Team 1" else "TEAM 2"
         team_name = str(menu.team_names.get(team, fallback_name) or fallback_name)
         label = self._preview_font.render(team_name, True, (235, 240, 255))
@@ -796,17 +829,8 @@ class MeleeMenuRenderer:
                     else:
                         self._draw_ship_icon_in_slot(screen, ship_name, icon_rect)
             else:
-                token = "?" if idx == 14 else "X"
-                token_rect = self._pickship_cell_rect(panel_rect, panel_frame, idx, PICKSHIP_SELECTOR_SIZE)
-                color = (240, 245, 255) if token == "?" else (255, 215, 215)
-                txt = self._preview_font.render(token, True, color)
-                screen.blit(
-                    txt,
-                    (
-                        token_rect.centerx - txt.get_width() // 2,
-                        token_rect.centery - txt.get_height() // 2,
-                    ),
-                )
+                # [2026-04-28] Reason: keep ? (index 14) and X (index 15) selectable but use baked PNG glyphs instead of overdrawing text.
+                pass
 
     def draw_battle_select(self, menu, sel1, sel2, conf1=None, conf2=None):
         # [2026-04-28] Reason: render UQM-like pre-battle ship picker visually while preserving menu.battle_select_mode behavior.
