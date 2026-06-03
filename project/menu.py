@@ -373,6 +373,11 @@ class SuperMeleeMenu:
                     self.state = "main_menu"
 
     def draw_battle_select(self, sel1, sel2, conf1=None, conf2=None):
+        # [2026-04-28] Reason: delegate pre-battle ship selection rendering to UQM-style renderer while preserving legacy fallback.
+        if self.renderer is not None and hasattr(self.renderer, "draw_battle_select"):
+            self.renderer.draw_battle_select(self, sel1, sel2, conf1, conf2)
+            return
+
         self.screen.fill(BLACK)
         panel_h = (SCREEN_H - 100) // 2
         panel1 = pygame.Rect(10, 80, GAME_SCREEN_W - 20, panel_h)
