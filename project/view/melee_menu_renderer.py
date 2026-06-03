@@ -72,15 +72,21 @@ BATTLE_BLINK_FRAMES = [25, 26]
 QUIT_BLINK_FRAMES = [29, 30]
 # [2026-04-28] Reason: fixed animation cadence for menu selection blinking to match UQM timing.
 MENU_BLINK_FRAME_DELAY_MS = 120
-# [2026-04-28] Reason: UQM pickship panels are placed in base 320x240 menu coordinates for easy visual calibration.
-PICKSHIP_TEAM1_PANEL_RECT = pygame.Rect(8, 8, 304, 96)
-PICKSHIP_TEAM2_PANEL_RECT = pygame.Rect(8, 136, 304, 96)
-# [2026-04-28] Reason: explicit local slot centers keep pre-battle 2x8 ship selection grid easy to tune.
-PICKSHIP_CELL_CENTERS_X = [30, 67, 104, 141, 178, 215, 252, 289]
-PICKSHIP_CELL_CENTERS_Y = [38, 67]
-PICKSHIP_CELL_SIZE = (26, 22)
-# [2026-04-28] Reason: dynamic team-name label must overwrite baked placeholder text in pickship artwork.
-PICKSHIP_TEAM_LABEL_RECT = pygame.Rect(48, 76, 208, 16)
+# [2026-04-28] Reason: keep pickship panels uniformly scaled from their actual PNG dimensions instead of stretching full-width.
+PICKSHIP_PANEL_SCALE = 2.0
+PICKSHIP_PANEL_TOP_Y = 34
+PICKSHIP_PANEL_BOTTOM_Y = 318
+# [2026-04-28] Reason: fallback native size is used only when meleepickship PNG assets are absent in a dev checkout.
+PICKSHIP_FALLBACK_NATIVE_SIZE = (128, 96)
+# [2026-04-28] Reason: explicit local 2x8 cell centers keep UQM pickship slot alignment easy to visually calibrate.
+PICKSHIP_CELL_CENTERS = [
+    (16, 34), (30, 34), (44, 34), (58, 34), (72, 34), (86, 34), (100, 34), (114, 34),
+    (16, 51), (30, 51), (44, 51), (58, 51), (72, 51), (86, 51), (100, 51), (114, 51),
+]
+PICKSHIP_SELECTOR_SIZE = (12, 12)
+PICKSHIP_ICON_SIZE = (11, 11)
+# [2026-04-28] Reason: dynamic team name covers only the compact original label area, not a large black panel block.
+PICKSHIP_TEAM_NAME_RECT = pygame.Rect(22, 77, 84, 10)
 # [2026-04-28] Reason: selected pre-battle slot uses a visual-only blink without mutating menu state.
 PICKSHIP_SELECT_BLINK_MS = 180
 
@@ -689,35 +695,50 @@ class MeleeMenuRenderer:
                         )
                         screen.blit(ship_icon, icon_pos)
 
-    def _scale_pickship_panel_rect(self, base_rect):
-        # [2026-04-28] Reason: convert explicit pickship base-layout panel rectangles into current screen coordinates.
-        scale_x = SCREEN_W / BASE_W
-        scale_y = SCREEN_H / BASE_H
-        return self._scale_rect(base_rect, scale_x, scale_y)
+    def _pickship_native_size(self, panel_frame):
+        # [2026-04-28] Reason: inspect loaded meleepickship PNG dimensions at runtime and use them as layout basis.
+        panel_img = self.pickship_sprites.get(panel_frame)
+        if panel_img is not None and panel_img.get_width() > 1 and panel_img.get_height() > 1:
+            return panel_img.get_width(), panel_img.get_height()
+        return PICKSHIP_FALLBACK_NATIVE_SIZE
 
-    def _scale_pickship_local_rect(self, panel_rect, local_rect):
-        # [2026-04-28] Reason: map easy-to-calibrate local pickship cell/label coordinates onto the scaled panel.
+    def _pickship_panel_rect(self, panel_frame, top_y):
+        # [2026-04-28] Reason: keep pickship panel aspect ratio by applying one uniform scale to actual PNG dimensions.
+        native_w, native_h = self._pickship_native_size(panel_frame)
+        max_scale_w = (SCREEN_W - 48) / native_w
+        max_scale_h = ((SCREEN_H - 64) / 2) / native_h
+        scale = min(PICKSHIP_PANEL_SCALE, max_scale_w, max_scale_h)
+        panel_w = max(1, int(native_w * scale))
+        panel_h = max(1, int(native_h * scale))
+        return pygame.Rect((SCREEN_W - panel_w) // 2, int(top_y), panel_w, panel_h)
+
+    def _scale_pickship_local_rect(self, panel_rect, panel_frame, local_rect):
+        # [2026-04-28] Reason: map native-panel local coordinates onto the uniformly scaled actual panel rectangle.
+        native_w, native_h = self._pickship_native_size(panel_frame)
+        layout_w, layout_h = PICKSHIP_FALLBACK_NATIVE_SIZE
+        x_scale = native_w / layout_w
+        y_scale = native_h / layout_h
         return pygame.Rect(
-            panel_rect.x + int((local_rect.x / BASE_W) * panel_rect.width),
-            panel_rect.y + int((local_rect.y / PICKSHIP_TEAM1_PANEL_RECT.height) * panel_rect.height),
-            max(1, int((local_rect.width / BASE_W) * panel_rect.width)),
-            max(1, int((local_rect.height / PICKSHIP_TEAM1_PANEL_RECT.height) * panel_rect.height)),
+            panel_rect.x + int((local_rect.x * x_scale / native_w) * panel_rect.width),
+            panel_rect.y + int((local_rect.y * y_scale / native_h) * panel_rect.height),
+            max(1, int((local_rect.width * x_scale / native_w) * panel_rect.width)),
+            max(1, int((local_rect.height * y_scale / native_h) * panel_rect.height)),
         )
 
-    def _pickship_cell_rect(self, panel_rect, slot_index):
-        # [2026-04-28] Reason: pre-battle selection uses a fixed 2x8 local grid with slots 0..13, ? at 14, X at 15.
-        row, col = divmod(slot_index, 8)
-        local_w, local_h = PICKSHIP_CELL_SIZE
+    def _pickship_cell_rect(self, panel_rect, panel_frame, slot_index, size):
+        # [2026-04-28] Reason: preserve exact pickship slot indices 0..13, ? at 14, X at 15 with compact native-cell geometry.
+        center_x, center_y = PICKSHIP_CELL_CENTERS[slot_index]
+        local_w, local_h = size
         local_rect = pygame.Rect(
-            PICKSHIP_CELL_CENTERS_X[col] - local_w // 2,
-            PICKSHIP_CELL_CENTERS_Y[row] - local_h // 2,
+            center_x - local_w // 2,
+            center_y - local_h // 2,
             local_w,
             local_h,
         )
-        return self._scale_pickship_local_rect(panel_rect, local_rect)
+        return self._scale_pickship_local_rect(panel_rect, panel_frame, local_rect)
 
     def _draw_pickship_panel(self, menu, screen, team, panel_rect, panel_frame, selected_idx, confirmed_idx):
-        # [2026-04-28] Reason: draw one UQM-style pickship panel while keeping fleet cells dynamic from menu.teams.
+        # [2026-04-28] Reason: draw compact UQM-style pickship panel while keeping fleet cells dynamic from menu.teams.
         panel_img = self.pickship_sprites.get(panel_frame)
         if panel_img is not None and panel_img.get_width() > 1 and panel_img.get_height() > 1:
             panel_scaled = pygame.transform.scale(panel_img, (panel_rect.width, panel_rect.height))
@@ -726,12 +747,11 @@ class MeleeMenuRenderer:
             pygame.draw.rect(screen, (8, 12, 28), panel_rect)
             pygame.draw.rect(screen, (75, 95, 135), panel_rect, 2)
 
-        label_rect = self._scale_pickship_local_rect(panel_rect, PICKSHIP_TEAM_LABEL_RECT)
-        pygame.draw.rect(screen, (5, 8, 20), label_rect)
-        pygame.draw.rect(screen, (70, 95, 145), label_rect, 1)
+        label_rect = self._scale_pickship_local_rect(panel_rect, panel_frame, PICKSHIP_TEAM_NAME_RECT)
+        pygame.draw.rect(screen, (14, 18, 32), label_rect)
         fallback_name = "TEAM 1" if team == "Team 1" else "TEAM 2"
         team_name = str(menu.team_names.get(team, fallback_name) or fallback_name)
-        label = self._pickship_font.render(team_name, True, (235, 240, 255))
+        label = self._preview_font.render(team_name, True, (235, 240, 255))
         screen.blit(
             label,
             (
@@ -744,30 +764,26 @@ class MeleeMenuRenderer:
         blink_on = (pygame.time.get_ticks() // PICKSHIP_SELECT_BLINK_MS) % 2 == 0
 
         for idx in range(16):
-            cell = self._pickship_cell_rect(panel_rect, idx)
+            selector_cell = self._pickship_cell_rect(panel_rect, panel_frame, idx, PICKSHIP_SELECTOR_SIZE)
             selected = idx == selected_idx
             confirmed = isinstance(confirmed_idx, int) and idx == confirmed_idx
 
             if selected and blink_on:
-                select_fill = pygame.Surface(cell.size, pygame.SRCALPHA)
-                select_fill.fill((230, 235, 255, 95))
-                screen.blit(select_fill, cell.topleft)
-                pygame.draw.rect(screen, (245, 245, 180), cell, max(2, cell.width // 12))
+                select_fill = pygame.Surface(selector_cell.size, pygame.SRCALPHA)
+                select_fill.fill((230, 235, 255, 70))
+                screen.blit(select_fill, selector_cell.topleft)
+                pygame.draw.rect(screen, (245, 245, 185), selector_cell, max(1, selector_cell.width // 8))
 
             if confirmed:
-                confirm_fill = pygame.Surface(cell.size, pygame.SRCALPHA)
-                confirm_fill.fill((70, 240, 120, 115))
-                screen.blit(confirm_fill, cell.topleft)
-                pygame.draw.rect(screen, (90, 255, 150), cell, max(3, cell.width // 9))
-            elif not selected:
-                pygame.draw.rect(screen, (35, 48, 76), cell, 1)
+                confirm_fill = pygame.Surface(selector_cell.size, pygame.SRCALPHA)
+                confirm_fill.fill((80, 245, 130, 100))
+                screen.blit(confirm_fill, selector_cell.topleft)
+                pygame.draw.rect(screen, (90, 255, 150), selector_cell, max(2, selector_cell.width // 6))
 
             if idx < 14:
                 ship_name = team_slots[idx] if idx < len(team_slots) else None
                 if ship_name:
-                    icon_pad_x = max(2, cell.width // 10)
-                    icon_pad_y = max(2, cell.height // 10)
-                    icon_rect = cell.inflate(-icon_pad_x * 2, -icon_pad_y * 2)
+                    icon_rect = self._pickship_cell_rect(panel_rect, panel_frame, idx, PICKSHIP_ICON_SIZE)
                     ship_icon = self._get_scaled_ship_icon(ship_name, icon_rect.width, icon_rect.height)
                     if ship_icon is not None:
                         screen.blit(
@@ -779,19 +795,16 @@ class MeleeMenuRenderer:
                         )
                     else:
                         self._draw_ship_icon_in_slot(screen, ship_name, icon_rect)
-                else:
-                    empty = pygame.Surface(cell.size, pygame.SRCALPHA)
-                    empty.fill((0, 0, 0, 45))
-                    screen.blit(empty, cell.topleft)
             else:
                 token = "?" if idx == 14 else "X"
-                color = (240, 245, 255) if token == "?" else (255, 210, 210)
-                txt = self._pickship_font.render(token, True, color)
+                token_rect = self._pickship_cell_rect(panel_rect, panel_frame, idx, PICKSHIP_SELECTOR_SIZE)
+                color = (240, 245, 255) if token == "?" else (255, 215, 215)
+                txt = self._preview_font.render(token, True, color)
                 screen.blit(
                     txt,
                     (
-                        cell.centerx - txt.get_width() // 2,
-                        cell.centery - txt.get_height() // 2,
+                        token_rect.centerx - txt.get_width() // 2,
+                        token_rect.centery - txt.get_height() // 2,
                     ),
                 )
 
@@ -799,15 +812,10 @@ class MeleeMenuRenderer:
         # [2026-04-28] Reason: render UQM-like pre-battle ship picker visually while preserving menu.battle_select_mode behavior.
         screen = menu.screen
         screen.fill((0, 0, 0))
-        panel1 = self._scale_pickship_panel_rect(PICKSHIP_TEAM1_PANEL_RECT)
-        panel2 = self._scale_pickship_panel_rect(PICKSHIP_TEAM2_PANEL_RECT)
+        panel1 = self._pickship_panel_rect(0, PICKSHIP_PANEL_TOP_Y)
+        panel2 = self._pickship_panel_rect(1, PICKSHIP_PANEL_BOTTOM_Y)
         self._draw_pickship_panel(menu, screen, "Team 1", panel1, 0, sel1, conf1)
         self._draw_pickship_panel(menu, screen, "Team 2", panel2, 1, sel2, conf2)
-
-        # [2026-04-28] Reason: keep key guidance as renderer-only text without changing selection/input logic.
-        instr = "Team1: E/D/S/F + A to confirm; Team2: Arrows + RCTRL to confirm"
-        msg = self._preview_font.render(instr, True, (210, 220, 240))
-        screen.blit(msg, (max(8, (SCREEN_W - msg.get_width()) // 2), SCREEN_H - msg.get_height() - 8))
 
     def draw_main_menu(self, menu):
         # [2026-02-03] reason: render background full-screen and place controls by scaled 320x240 anchors.
