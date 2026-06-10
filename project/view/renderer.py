@@ -68,6 +68,8 @@ asteroid_anims = {}
 planet_anims = {}
 effect_defs = {}
 effect_anims = {}
+# [2026-03-29] Reason: fixed-location UQM Kohr-Ah buzzsaw visuals for primary projectile.
+KOHRAH_BUZZSAW_FRAMES = []
 
 # Trail behavior
 TRAIL_GRACE_MS = 180
@@ -228,6 +230,40 @@ def _load_projectile_animations():
                         except Exception:
                             pass
                         animations[folder]['missile'].append(surf)
+
+
+def _load_kohrah_buzzsaw_frames():
+    # [2026-03-29] Reason: load original UQM buzzsaw sequence from fixed shared asset folder.
+    candidate_dirs = [
+        os.path.join(PROJECTILES_ROOT, 'kohrah_buzzsaw'),
+        # [2026-03-29] Reason: support repo-root `assets/projectiles/kohrah_buzzsaw` layout to avoid path mismatch.
+        os.path.join(os.path.dirname(PROJECT_ROOT), 'assets', 'projectiles', 'kohrah_buzzsaw'),
+    ]
+    names = [f"buzzsaw-big-00{i}.png" for i in range(8)]
+    KOHRAH_BUZZSAW_FRAMES.clear()
+    loaded_from = None
+    for buzzsaw_dir in candidate_dirs:
+        if not os.path.isdir(buzzsaw_dir):
+            continue
+        tmp_frames = []
+        for name in names:
+            img_path = os.path.join(buzzsaw_dir, name)
+            if not os.path.isfile(img_path):
+                tmp_frames = []
+                break
+            surf = pygame.image.load(img_path)
+            try:
+                surf = surf.convert_alpha()
+            except Exception:
+                pass
+            tmp_frames.append(surf)
+        if len(tmp_frames) == len(names):
+            KOHRAH_BUZZSAW_FRAMES.extend(tmp_frames)
+            loaded_from = buzzsaw_dir
+            break
+    if KOHRAH_BUZZSAW_FRAMES:
+        animations.setdefault('kohr_ah', {})['buzzsaw'] = KOHRAH_BUZZSAW_FRAMES
+    print(f"[projectiles] kohr-ah buzzsaw loaded: {len(KOHRAH_BUZZSAW_FRAMES)} frames from {loaded_from}")
 
 
 # NEW 2025-09-16: load Yehat shield body frames from projectiles folder
@@ -557,6 +593,10 @@ def draw_ship(screen, ship, cam, zoom):
 
 # ---------------- draw: generic projectile ----------------
 def draw_projectile(screen, proj, cam, zoom):
+    # [2026-03-29] Reason: Mine has `launch_time` and was incorrectly treated as missile; force mine renderer path.
+    if getattr(proj.__class__, "__name__", "").lower() == "mine":
+        draw_mine(screen, proj, cam, zoom)
+        return
     def _is_missile_like(o):
         name = o.__class__.__name__.lower() if hasattr(o, '__class__') else ''
         if name in ('missile', 'cruisermissile'):
@@ -612,17 +652,34 @@ def draw_mine(screen, mine, cam, zoom):
     sx, sy = world_to_screen(mine.x, mine.y, cam.x, cam.y, zoom)
     cls = mine.owner.__class__.__name__.lower() if getattr(mine, 'owner', None) else ''
     folder = ASSET_KEY_MAPPING.get(cls)
-    key = 'buzzsaw' if folder and 'buzzsaw' in animations.get(folder, {}) else 'mine'
-    frames = animations.get(folder, {}).get(key) if folder else None
+    # [2026-03-29] Reason: Kohr-Ah mine must not silently fall back to old dark placeholder art.
+    if cls == 'shipb':
+        frames = KOHRAH_BUZZSAW_FRAMES
+    else:
+        key = 'buzzsaw' if folder and 'buzzsaw' in animations.get(folder, {}) else 'mine'
+        frames = animations.get(folder, {}).get(key) if folder else None
     if frames:
-        angle = math.degrees(math.atan2(getattr(mine, 'vy', 0.0), getattr(mine, 'vx', 0.0)))
-        idx = int((angle % 360) / ROTATION_STEP_DEGREES) % len(frames)
+        # [2026-03-29] Reason: enforce UQM timing map (active uses only 000/001; dying uses 002..007 once).
+        anim_time = float(getattr(mine, 'anim_time', 0.0))
+        if getattr(mine, 'state', '') == 'dying':
+            # [2026-03-29] Reason: on destruction show impact frame 002 then splinter 003..007 exactly once.
+            death_seq = list(range(2, min(len(frames), 8)))
+            death_fps = 24.0
+            step = min(len(death_seq) - 1, int(anim_time * death_fps)) if death_seq else 0
+            idx = death_seq[step] if death_seq else 0
+        else:
+            # [2026-03-29] Reason: active spin must loop only frames 000 and 001, never destruction frames.
+            spin_seq = [0, 1] if len(frames) >= 2 else [0]
+            spin_fps = 16.0
+            idx = spin_seq[int(anim_time * spin_fps) % len(spin_seq)]
         img = frames[idx]
         img_s = _scale_surface(img, zoom)
         w, h = img_s.get_size()
         screen.blit(img_s, (int(sx - w / 2), int(sy - h / 2)))
     else:
-        pygame.draw.circle(screen, (255, 0, 0), (int(sx), int(sy)), max(1, int(getattr(mine, 'radius', 3) * zoom)))
+        # [2026-03-29] Reason: explicit debug-visible fallback for missing Kohr-Ah buzzsaw assets.
+        color = (255, 0, 255) if cls == 'shipb' else (255, 0, 0)
+        pygame.draw.circle(screen, color, (int(sx), int(sy)), max(1, int(getattr(mine, 'radius', 3) * zoom)))
 
 
 # ---------------- draw: plasmoid ----------------
@@ -742,6 +799,7 @@ load_ship_animations()
 _load_projectile_animations()
 _load_cruiser_saturn_human()
 _load_shield_animations()  # NEW 2025-09-16
+_load_kohrah_buzzsaw_frames()  # [2026-03-29] Reason: fixed folder override for Kohr-Ah primary buzzsaw frames.
 load_asteroid_animations()
 load_effects_animations()
 load_planet_animations()

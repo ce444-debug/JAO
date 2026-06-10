@@ -13,8 +13,9 @@ AUTO_ANCHOR_MODE = False
 # [2026-02-03] reason: base UQM menu resolution for anchor conversion.
 BASE_W = 320
 BASE_H = 240
-TEAM1_POS = (289, 39)
-TEAM2_POS = (289, 182)
+# [2026-04-28] Reason: post-calibration tweak for Team Control sprite alignment within right-panel slot background.
+TEAM1_POS = (287, 39)
+TEAM2_POS = (287, 182)
 # [2026-02-03] reason: anchors for Save/Load/Battle button sprites in 320x240 layout space.
 SAVE_T1_POS = (286, 61)
 LOAD_T1_POS = (288, 71)
@@ -61,6 +62,43 @@ CONTROL_OPTIONS = [
     "Good Cyborg",
     "Awesome Cyborg",
 ]
+# [2026-04-28] Reason: selected Save button must blink through original UQM highlight sequence instead of static frame.
+SAVE_BLINK_FRAMES = [18, 20, 21, 23]
+# [2026-04-28] Reason: selected Load button must blink through original UQM highlight sequence instead of static frame.
+LOAD_BLINK_FRAMES = [17, 19, 22, 24]
+# [2026-04-28] Reason: selected Battle button uses original 2-frame UQM blink cycle.
+BATTLE_BLINK_FRAMES = [25, 26]
+# [2026-04-28] Reason: selected Quit button uses original 2-frame UQM blink cycle.
+QUIT_BLINK_FRAMES = [29, 30]
+# [2026-04-28] Reason: fixed animation cadence for menu selection blinking to match UQM timing.
+MENU_BLINK_FRAME_DELAY_MS = 120
+# [2026-04-28] Reason: keep pickship panels uniformly scaled from their actual PNG dimensions instead of stretching full-width.
+PICKSHIP_PANEL_SCALE = 2.0
+PICKSHIP_PANEL_TOP_Y = 34
+PICKSHIP_PANEL_BOTTOM_Y = 318
+# [2026-04-28] Reason: fallback native size is used only when meleepickship PNG assets are absent in a dev checkout.
+PICKSHIP_FALLBACK_NATIVE_SIZE = (128, 96)
+# [2026-04-28] Reason: split explicit pickship fleet centers from baked ?/X centers so the far-right cells can be calibrated independently.
+PICKSHIP_FLEET_CELL_CENTERS = [
+    (13, 33), (30, 32), (47, 33), (64, 32), (81, 33), (98, 32), (110, 33),
+    (13, 53), (30, 52), (47, 53), (64, 52), (81, 53), (98, 52), (110, 53),
+]
+# [2026-04-28] Reason: index 14 must align with the baked random-ship ? cell and index 15 with the baked X cell.
+PICKSHIP_RANDOM_CELL_CENTER = (121, 33)
+PICKSHIP_CANCEL_CELL_CENTER = (121, 53)
+PICKSHIP_CELL_CENTERS = PICKSHIP_FLEET_CELL_CENTERS + [PICKSHIP_RANDOM_CELL_CENTER, PICKSHIP_CANCEL_CELL_CENTER]
+# [2026-04-28] Reason: selection highlight uses the baked ?/X footprint as a pale square behind content, not an outline frame.
+PICKSHIP_SELECTOR_SIZE = (22, 22)
+# [2026-04-28] Reason: pickship icons need a larger alpha-cropped target box so Earthling and Kohr-Ah can match Yehat's visual scale.
+PICKSHIP_ICON_TARGET_SIZE = (30, 30)
+# [2026-04-28] Reason: dynamic team name should cover only the narrow original label strip with a light blended overlay.
+PICKSHIP_TEAM_NAME_RECT = pygame.Rect(43, 81, 42, 5)
+# [2026-04-28] Reason: cover baked point counters on both sides, then draw dynamic fleet points only once at top-left.
+PICKSHIP_POINTS_RECT = pygame.Rect(5, 4, 22, 7)
+PICKSHIP_POINTS_LEFT_COVER_RECT = pygame.Rect(3, 3, 28, 9)
+PICKSHIP_POINTS_RIGHT_COVER_RECT = pygame.Rect(96, 3, 28, 9)
+# [2026-04-28] Reason: selected pre-battle slot uses a visual-only blink without mutating menu state.
+PICKSHIP_SELECT_BLINK_MS = 180
 
 # [2026-03-16] Причина: соответствие игровых названий кораблей и доступных иконок меню.
 SHIP_ICON_FILES = {
@@ -75,13 +113,25 @@ ICON_SCALE_OVERRIDES = {
     "YEHAT TERMINATOR": 1.12,
 }
 
+# [2026-04-28] Reason: pickship icons need separate visual-size tuning without affecting main menu icon rendering.
+PICKSHIP_ICON_SCALE_OVERRIDES = {
+    "EARTHLING CRUISER": 1.55,
+    "KOHR-AH MARAUDER": 1.45,
+    "YEHAT TERMINATOR": 1.00,
+}
+
 
 class MeleeMenuRenderer:
     def __init__(self):
-        # [2026-02-03] reason: load UQM control sprites 000..008 into dictionary for direct frame access.
+        # [2026-04-28] Reason: UQM-style menu blink animation uses full frame ranges 001–016, 017–024, 025–026, 029–030.
         self.ui_sprites = {}
-        for frame in [0, 1, 2, 3, 4, 5, 6, 7, 8, 17, 18, 19, 20, 25, 26, 27, 29, 30]:
+        for frame in range(0, 31):
             self.ui_sprites[frame] = self._load_frame(frame)
+        # [2026-04-28] Reason: pre-battle pickship screen uses dedicated UQM panel assets loaded separately from main menu frames.
+        self.pickship_sprites = {
+            0: self._load_pickship_frame(0),
+            1: self._load_pickship_frame(1),
+        }
         # [2026-02-03] reason: diagnostic click-capture flow for automatic button anchor picking.
         self._anchor_targets = [
             "SAVE_T1",
@@ -97,6 +147,8 @@ class MeleeMenuRenderer:
         self._slot_font = pygame.font.SysFont("Arial", 10)
         self._preview_font = pygame.font.SysFont("Arial", 13)
         self._preview_title_font = pygame.font.SysFont("Arial", 14, bold=True)
+        # [2026-04-28] Reason: pre-battle pickship screen needs readable dynamic labels for "?", "X", and team names.
+        self._pickship_font = pygame.font.SysFont("Arial", 18, bold=True)
         self._ship_icon_cache = {}
         self._ship_icon_scaled_cache = {}
         self._ship_stats_cache = {}
@@ -112,6 +164,35 @@ class MeleeMenuRenderer:
         fallback = pygame.Surface((1, 1), pygame.SRCALPHA)
         fallback.fill((0, 0, 0, 0))
         return fallback
+
+    def _pickship_frame_path(self, frame_index):
+        # [2026-04-28] Reason: pre-battle ship picker uses separate UQM meleepickship panel assets.
+        return os.path.join("assets", "ui", "menu", f"meleepickship-{frame_index:03d}.png")
+
+    def _load_pickship_frame(self, frame_index):
+        # [2026-04-28] Reason: safely load pickship panels while preserving procedural fallback if assets are unavailable.
+        path = self._pickship_frame_path(frame_index)
+        if os.path.exists(path):
+            return pygame.image.load(path).convert_alpha()
+        fallback = pygame.Surface((1, 1), pygame.SRCALPHA)
+        fallback.fill((0, 0, 0, 0))
+        return fallback
+
+    def _get_blink_frame(self, frames):
+        # [2026-04-28] Reason: selected menu buttons must animate through original UQM frames instead of using one static highlighted sprite.
+        if not frames:
+            return None
+        phase = (pygame.time.get_ticks() // MENU_BLINK_FRAME_DELAY_MS) % len(frames)
+        return frames[int(phase)]
+
+    def _get_control_blink_frame(self, control_value):
+        # [2026-04-28] Reason: control options use a 4x4 frame matrix: control index plus blink phase.
+        try:
+            control_index = CONTROL_OPTIONS.index(control_value)
+        except ValueError:
+            control_index = 0
+        phase = (pygame.time.get_ticks() // MENU_BLINK_FRAME_DELAY_MS) % 4
+        return 1 + control_index + int(phase) * 4
 
     # [2026-03-16] Причина: единая конвертация Rect из 320x240 в текущее экранное разрешение.
     def _scale_rect(self, rect, scale_x, scale_y):
@@ -226,6 +307,38 @@ class MeleeMenuRenderer:
 
         scale = min(target_w / src_w, target_h / src_h)
         scale *= ICON_SCALE_OVERRIDES.get(key, 1.0)
+        scaled_w = max(1, min(target_w, int(src_w * scale)))
+        scaled_h = max(1, min(target_h, int(src_h * scale)))
+        scaled = pygame.transform.smoothscale(source, (scaled_w, scaled_h))
+        self._ship_icon_scaled_cache[cache_key] = scaled
+        return scaled
+
+    def _get_scaled_pickship_icon(self, ship_name, target_w, target_h):
+        # [2026-04-28] Reason: alpha-crop pickship icons before scaling so transparent source padding does not make ships look inconsistent.
+        key = self._normalize_ship_key(ship_name)
+        if not key:
+            return None
+
+        override = PICKSHIP_ICON_SCALE_OVERRIDES.get(key, 1.0)
+        cache_key = ("pickship_alpha_crop", key, target_w, target_h, override)
+        if cache_key in self._ship_icon_scaled_cache:
+            return self._ship_icon_scaled_cache[cache_key]
+
+        source = self._get_ship_icon_surface(ship_name)
+        if source is None:
+            self._ship_icon_scaled_cache[cache_key] = None
+            return None
+
+        bounds = source.get_bounding_rect()
+        if bounds.width > 0 and bounds.height > 0:
+            source = source.subsurface(bounds).copy()
+
+        src_w, src_h = source.get_size()
+        if src_w <= 0 or src_h <= 0:
+            self._ship_icon_scaled_cache[cache_key] = None
+            return None
+
+        scale = min(target_w / src_w, target_h / src_h) * override
         scaled_w = max(1, min(target_w, int(src_w * scale)))
         scaled_h = max(1, min(target_h, int(src_h * scale)))
         scaled = pygame.transform.smoothscale(source, (scaled_w, scaled_h))
@@ -631,6 +744,154 @@ class MeleeMenuRenderer:
                         )
                         screen.blit(ship_icon, icon_pos)
 
+    def _pickship_native_size(self, panel_frame):
+        # [2026-04-28] Reason: inspect loaded meleepickship PNG dimensions at runtime and use them as layout basis.
+        panel_img = self.pickship_sprites.get(panel_frame)
+        if panel_img is not None and panel_img.get_width() > 1 and panel_img.get_height() > 1:
+            return panel_img.get_width(), panel_img.get_height()
+        return PICKSHIP_FALLBACK_NATIVE_SIZE
+
+    def _pickship_panel_rect(self, panel_frame, top_y):
+        # [2026-04-28] Reason: keep pickship panel aspect ratio by applying one uniform scale to actual PNG dimensions.
+        native_w, native_h = self._pickship_native_size(panel_frame)
+        max_scale_w = (SCREEN_W - 48) / native_w
+        max_scale_h = ((SCREEN_H - 64) / 2) / native_h
+        scale = min(PICKSHIP_PANEL_SCALE, max_scale_w, max_scale_h)
+        panel_w = max(1, int(native_w * scale))
+        panel_h = max(1, int(native_h * scale))
+        return pygame.Rect((SCREEN_W - panel_w) // 2, int(top_y), panel_w, panel_h)
+
+    def _scale_pickship_local_rect(self, panel_rect, panel_frame, local_rect):
+        # [2026-04-28] Reason: map native-panel local coordinates onto the uniformly scaled actual panel rectangle.
+        native_w, native_h = self._pickship_native_size(panel_frame)
+        layout_w, layout_h = PICKSHIP_FALLBACK_NATIVE_SIZE
+        x_scale = native_w / layout_w
+        y_scale = native_h / layout_h
+        return pygame.Rect(
+            panel_rect.x + int((local_rect.x * x_scale / native_w) * panel_rect.width),
+            panel_rect.y + int((local_rect.y * y_scale / native_h) * panel_rect.height),
+            max(1, int((local_rect.width * x_scale / native_w) * panel_rect.width)),
+            max(1, int((local_rect.height * y_scale / native_h) * panel_rect.height)),
+        )
+
+    def _pickship_cell_rect(self, panel_rect, panel_frame, slot_index, size):
+        # [2026-04-28] Reason: preserve exact pickship slot indices 0..13, ? at 14, X at 15 with compact native-cell geometry.
+        center_x, center_y = PICKSHIP_CELL_CENTERS[slot_index]
+        local_w, local_h = size
+        local_rect = pygame.Rect(
+            center_x - local_w // 2,
+            center_y - local_h // 2,
+            local_w,
+            local_h,
+        )
+        return self._scale_pickship_local_rect(panel_rect, panel_frame, local_rect)
+
+    def _pickship_team_points(self, menu, team):
+        # [2026-04-28] Reason: draw visual fleet points from existing ship costs without introducing new gameplay rules.
+        total = 0
+        for ship_name in menu.teams.get(team, []):
+            if not ship_name:
+                continue
+            stats = self._get_ship_stats(ship_name)
+            if stats:
+                total += int(stats.get("cost", 0) or 0)
+        return total
+
+    def _draw_pickship_points(self, screen, panel_rect, panel_frame, menu, team):
+        # [2026-04-28] Reason: hide baked corner counters first, then draw total fleet points once in the top-left counter.
+        for cover_rect in (PICKSHIP_POINTS_LEFT_COVER_RECT, PICKSHIP_POINTS_RIGHT_COVER_RECT):
+            rect = self._scale_pickship_local_rect(panel_rect, panel_frame, cover_rect)
+            cover = pygame.Surface(rect.size, pygame.SRCALPHA)
+            cover.fill((14, 20, 42, 170))
+            screen.blit(cover, rect.topleft)
+
+        points = str(self._pickship_team_points(menu, team))
+        rect = self._scale_pickship_local_rect(panel_rect, panel_frame, PICKSHIP_POINTS_RECT)
+        txt = self._slot_font.render(points, True, (235, 240, 255))
+        screen.blit(
+            txt,
+            (
+                rect.centerx - txt.get_width() // 2,
+                rect.centery - txt.get_height() // 2,
+            ),
+        )
+
+    def _draw_pickship_panel(self, menu, screen, team, panel_rect, panel_frame, selected_idx, confirmed_idx):
+        # [2026-04-28] Reason: draw compact UQM-style pickship panel while keeping fleet cells dynamic from menu.teams.
+        panel_img = self.pickship_sprites.get(panel_frame)
+        if panel_img is not None and panel_img.get_width() > 1 and panel_img.get_height() > 1:
+            panel_scaled = pygame.transform.scale(panel_img, (panel_rect.width, panel_rect.height))
+            screen.blit(panel_scaled, panel_rect.topleft)
+        else:
+            pygame.draw.rect(screen, (8, 12, 28), panel_rect)
+            pygame.draw.rect(screen, (75, 95, 135), panel_rect, 2)
+
+        self._draw_pickship_points(screen, panel_rect, panel_frame, menu, team)
+
+        label_rect = self._scale_pickship_local_rect(panel_rect, panel_frame, PICKSHIP_TEAM_NAME_RECT)
+        # [2026-04-28] Reason: blend a tiny low-opacity blue strip over baked label text without creating a heavy black rectangle.
+        label_cover = pygame.Surface(label_rect.size, pygame.SRCALPHA)
+        label_cover.fill((18, 28, 54, 95))
+        screen.blit(label_cover, label_rect.topleft)
+        fallback_name = "TEAM 1" if team == "Team 1" else "TEAM 2"
+        team_name = str(menu.team_names.get(team, fallback_name) or fallback_name)
+        label = self._preview_font.render(team_name, True, (235, 240, 255))
+        screen.blit(
+            label,
+            (
+                label_rect.centerx - label.get_width() // 2,
+                label_rect.centery - label.get_height() // 2,
+            ),
+        )
+
+        team_slots = menu.teams.get(team, [])
+        blink_on = (pygame.time.get_ticks() // PICKSHIP_SELECT_BLINK_MS) % 2 == 0
+
+        for idx in range(16):
+            selector_cell = self._pickship_cell_rect(panel_rect, panel_frame, idx, PICKSHIP_SELECTOR_SIZE)
+            selected = idx == selected_idx
+            confirmed = isinstance(confirmed_idx, int) and idx == confirmed_idx
+
+            if selected and blink_on:
+                # [2026-04-28] Reason: selected cell should blink as a pale background square behind content, with no outline frame.
+                select_fill = pygame.Surface(selector_cell.size, pygame.SRCALPHA)
+                select_fill.fill((235, 238, 210, 95))
+                screen.blit(select_fill, selector_cell.topleft)
+
+            if confirmed:
+                # [2026-04-28] Reason: confirmed selection uses a subtle stable tint instead of a thick rectangular border.
+                confirm_fill = pygame.Surface(selector_cell.size, pygame.SRCALPHA)
+                confirm_fill.fill((95, 235, 135, 105))
+                screen.blit(confirm_fill, selector_cell.topleft)
+
+            if idx < 14:
+                ship_name = team_slots[idx] if idx < len(team_slots) else None
+                if ship_name:
+                    icon_rect = self._pickship_cell_rect(panel_rect, panel_frame, idx, PICKSHIP_ICON_TARGET_SIZE)
+                    ship_icon = self._get_scaled_pickship_icon(ship_name, icon_rect.width, icon_rect.height)
+                    if ship_icon is not None:
+                        screen.blit(
+                            ship_icon,
+                            (
+                                icon_rect.centerx - ship_icon.get_width() // 2,
+                                icon_rect.centery - ship_icon.get_height() // 2,
+                            ),
+                        )
+                    else:
+                        self._draw_ship_icon_in_slot(screen, ship_name, icon_rect)
+            else:
+                # [2026-04-28] Reason: keep ? (index 14) and X (index 15) selectable but use baked PNG glyphs instead of overdrawing text.
+                pass
+
+    def draw_battle_select(self, menu, sel1, sel2, conf1=None, conf2=None):
+        # [2026-04-28] Reason: render UQM-like pre-battle ship picker visually while preserving menu.battle_select_mode behavior.
+        screen = menu.screen
+        screen.fill((0, 0, 0))
+        panel1 = self._pickship_panel_rect(0, PICKSHIP_PANEL_TOP_Y)
+        panel2 = self._pickship_panel_rect(1, PICKSHIP_PANEL_BOTTOM_Y)
+        self._draw_pickship_panel(menu, screen, "Team 1", panel1, 0, sel1, conf1)
+        self._draw_pickship_panel(menu, screen, "Team 2", panel2, 1, sel2, conf2)
+
     def draw_main_menu(self, menu):
         # [2026-02-03] reason: render background full-screen and place controls by scaled 320x240 anchors.
         screen = menu.screen
@@ -710,7 +971,8 @@ class MeleeMenuRenderer:
         # Team 1 control sprite
         team1_idx = CONTROL_OPTIONS.index(menu.settings["Team 1"]["control"])
         if menu.selected_right == 0:
-            team1_sprite = 1 + team1_idx
+            # [2026-04-28] Reason: selected Team Control must blink using UQM control matrix frames 001..016.
+            team1_sprite = self._get_control_blink_frame(menu.settings["Team 1"]["control"])
         else:
             team1_sprite = 5 + team1_idx
         # [2026-02-03] reason: control sprite must scale with background scale factors.
@@ -734,7 +996,8 @@ class MeleeMenuRenderer:
         # Team 2 control sprite
         team2_idx = CONTROL_OPTIONS.index(menu.settings["Team 2"]["control"])
         if menu.selected_right == 6:
-            team2_sprite = 1 + team2_idx
+            # [2026-04-28] Reason: selected Team Control must blink using UQM control matrix frames 001..016.
+            team2_sprite = self._get_control_blink_frame(menu.settings["Team 2"]["control"])
         else:
             team2_sprite = 5 + team2_idx
         # [2026-02-03] reason: control sprite must scale with background scale factors.
@@ -759,7 +1022,8 @@ class MeleeMenuRenderer:
         selected = menu.selected_right
 
         if selected == 1:
-            save_t1_frame = 20
+            # [2026-04-28] Reason: selected Save must animate instead of static highlighted sprite.
+            save_t1_frame = self._get_blink_frame(SAVE_BLINK_FRAMES)
         else:
             save_t1_frame = 18
         save_t1_x = int(SAVE_T1_POS[0] * scale_x)
@@ -781,7 +1045,8 @@ class MeleeMenuRenderer:
         )
 
         if selected == 2:
-            load_t1_frame = 19
+            # [2026-04-28] Reason: selected Load must animate instead of static highlighted sprite.
+            load_t1_frame = self._get_blink_frame(LOAD_BLINK_FRAMES)
         else:
             load_t1_frame = 17
         load_t1_x = int(LOAD_T1_POS[0] * scale_x)
@@ -803,7 +1068,8 @@ class MeleeMenuRenderer:
         )
 
         if selected == 5:
-            save_t2_frame = 20
+            # [2026-04-28] Reason: selected Save must animate instead of static highlighted sprite.
+            save_t2_frame = self._get_blink_frame(SAVE_BLINK_FRAMES)
         else:
             save_t2_frame = 18
         save_t2_x = int(SAVE_T2_POS[0] * scale_x)
@@ -825,7 +1091,8 @@ class MeleeMenuRenderer:
         )
 
         if selected == 4:
-            load_t2_frame = 19
+            # [2026-04-28] Reason: selected Load must animate instead of static highlighted sprite.
+            load_t2_frame = self._get_blink_frame(LOAD_BLINK_FRAMES)
         else:
             load_t2_frame = 17
         load_t2_x = int(LOAD_T2_POS[0] * scale_x)
@@ -849,7 +1116,8 @@ class MeleeMenuRenderer:
         panel_mode = self._get_right_panel_mode(menu)
 
         if selected == 3:
-            battle_frame = 26
+            # [2026-04-28] Reason: selected Battle must animate through original 2-frame blink sequence.
+            battle_frame = self._get_blink_frame(BATTLE_BLINK_FRAMES)
         else:
             battle_frame = 25
         battle_x = int(BATTLE_POS[0] * scale_x)
@@ -877,7 +1145,8 @@ class MeleeMenuRenderer:
             self._draw_battle_area_content(menu, screen, battle_rect, panel_mode)
 
         if selected == 7:
-            quit_frame = 30
+            # [2026-04-28] Reason: selected Quit must animate through original 2-frame blink sequence.
+            quit_frame = self._get_blink_frame(QUIT_BLINK_FRAMES)
         else:
             quit_frame = 29
         quit_x = int(QUIT_POS[0] * scale_x)

@@ -37,8 +37,10 @@ class ShipB(BaseShip):
             self.energy -= self.weapon_energy_cost
             self.weapon_timer = self.weapon_wait
             rad = math.radians(self.angle)
-            front_x = self.x + self.radius * math.sin(rad)
-            front_y = self.y - self.radius * math.cos(rad)
+            # [2026-03-29] Reason: spawn mine fully outside ship nose to avoid angle-dependent immediate overlap destruction.
+            spawn_offset = self.radius + 5 + 1.0  # ship radius + mine radius + small safety margin
+            front_x = self.x + spawn_offset * math.sin(rad)
+            front_y = self.y - spawn_offset * math.cos(rad)
             mine_vx = self.vx + 150 * math.sin(rad)
             mine_vy = self.vy - 150 * math.cos(rad)
             mine = Mine(front_x, front_y, mine_vx, mine_vy, enemy, game_time, launching=True)
